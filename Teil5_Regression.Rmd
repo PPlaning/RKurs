@@ -1,0 +1,458 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 5 Regressionanalytische Verfahren
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+#Vorbereitungen 
+
+Pakete laden
+```{r, message=FALSE, warning=FALSE}
+library(foreign)
+library(psych)
+library(Hmisc)
+library(car)
+```
+
+Datensatz laden
+```{r}
+load(file = "WPstudis.RData")
+```
+
+Wissenschaftliche Notation ausschalten
+```{r}
+options(scipen = 999)
+```
+
+# Einfache lineare Regression  
+
+Frage: Laesst sich die Koerpergroesse aus der Schuhgroesse vorhersagen?
+
+Subset erstellen:
+```{r}
+data_lm <- na.omit(WPStudis[c("F1_Nummer", "F4_Körpergröße","F5_Schuhgröße","F2_Alter", "F3_Geschlecht")])
+```
+
+Modell Erstellen. Notation AV ~ UV
+```{r}
+lm1<- lm(F4_Körpergröße ~ F5_Schuhgröße, data=data_lm)  
+lm1
+```
+
+Standardisierte Koeffizienten (= betas):
+Die *scale*-Funktion z-standardisiert die Ausgangsvariablen:
+
+```{r}
+lm2<- lm(scale(F4_Körpergröße) ~ scale(F5_Schuhgröße), data=data_lm) 
+lm2
+```
+
+Was bedeutet der standardisierte Koeffizient / beta Wert bei der bivariaten Regression?
+Grundsätzlich helfen standardisierte Koeffizient (beta Werte) bei der Interpretation, da sie unabhängig von der zugrunde liegenden Skala interpretierbar sind. Bei der bivariaten Regression entspricht der Wert dem Korrelationskoeffizienten.
+
+Zum Vergleich:
+```{r}
+ cor(data_lm$F4_Körpergröße,data_lm$F5_Schuhgröße)
+```
+
+
+Signifikanztests für die Regressionskoeffizienten:
+```{r}
+summary(lm1)
+```
+
+Die einzelnen Komponenten des lm-Objekts lassen sich auch seperat auslesen:
+
+```{r}
+coefficients(lm1)  #Modelkoeffizienten
+confint(lm1, level=0.95)  #Konfidenzintervalle
+residuals(lm1)  #Residuen
+```
+
+Was wir aber eigentlich vor der Regression machen solten: Vorraussetzung prüfen!
+
+Diese sind:
+
+ 1. Korrekte Spezifikation des Modells
+ 2. Normalverteilung der Residuen
+ 3. Homoskedastizität
+ 4. Ausreißer und Einflussreiche Datenpunkte
+
+Bei multipler Regresson zusätzlich:
+ 5. Multikollinearität
+ 6. Unabhängigkeit der Risiduen
+
+ Ueber Plots lassen sich die Voraussetzungen 1 bis 4 relativ einfach visuell pruefen:
+
+Optional: 4 Graphen pro Seite mit *par(mfrow=c(2,2)) *
+
+Plots starten:
+```{r}
+par(mfrow=c(2,2)) 
+plot(lm1)
+```
+
+Das Layout zurueck (Wieder nur 1 Graph pro Seite):
+```{r}
+dev.off()
+```
+
+Erklärung der Plots:
+- Residuals vs. Fitted: Testet Vorraussetzung 1 - Die Werte sollen unsystematisch verteilt und die rote (Lowess-Linie) möglichst parallel zu X-Achse verlaufen
+- Normal-Q-Q: Testet Vorraussetzung 2 - Normalverteilte Residuen sollten auf der Diagonalen liegen
+- Scale-Location-Diagram: Testet Vorraussetzung 3 - Homoskedastizität ist gegeben bei unsystematischer Verteilung der Residuen
+- Residuals vs. Leverage: Testet Vorraussetzung 4 - Zeigt Ausreiser - Schauen Sie sich die angezeigten Zeilennummern (4,76,88) in den Rohdaten an!
+
+Was passiert, wenn wir den Outlier rausnehmen. Sie können hierfür zwei Operator verwenden, entweder *!=* (heißt "not equal") oder Alternativ *-*.
+Der Befehl ist entsprechend entwerder *data_lm2 <- data_lm[data_lm$F1_Nummer!= 4,]* oder *data_lm2<-data_lm[-4,]*
+
+```{r}
+data_lm2 <- data_lm2<-data_lm[-4,]
+```
+
+Aufgabe: Rechnen Sie die Analysen nochmal durch. Was hat sich veraendert?
+
+Scatterplot mit Regressionsgerade:
+```{r}
+plot(data_lm2$F5_Schuhgröße,data_lm2$F4_Körpergröße,
+     xlab="Körpergröße",
+     ylab="Schuhgröße")
+abline(lm1)  #Einzeichnen der Regressionsgerade
+```
+
+Wir können nun mit einem beliebigen Wert für Schuhgröße, die Körpergröße vorhersagen. Testen Sie es mal.
+
+```{r}
+predict(lm1, data.frame(F5_Schuhgröße=42))
+```
+
+#Übungsaufgabe 5.1
+Wir Nutzen Das Data-Set "Prestige" aus dem Package car. Schauen Sie sich die Daten an und machen Sie sich damit vertraut (*?Prestige*)
+
+- Können wir aufgrund der Bildung (Anzahl Jahre) das Einkommen ableiten? 
+- Wie lautet die Regressionsgrade? Wie Interpretieren Sie den B-Koeffizient?
+- Zeichnen Sie diese in den Scatterplot ein.
+- Wie hoch ist basierend auf Ihrem Modell das vorhergesagte Einkommen bei 12 Jahren Bildung?
+
+
+#Multiple lineare Regression 
+
+Frage: Können wir die Lebens-Zufriedenheit aus der Zufriedenheit mit dem Studium und der Zufriedenheit mit der Partnerschafft vorhersagen?
+
+Subset erstellen:
+```{r}
+data_multi <- WPStudis[c("F1_Nummer","F19_Partnerschaft","F21_01_Zufriedenheit_Leben","F21_02_Zufriedenheit_Studium","F21_03_Zufriedenheit_Partnerschaft")]
+```
+
+Missings auschliessen:
+```{r}
+data_multi <- na.omit(data_multi)
+```
+
+Als Numerisch
+```{r}
+data_multi$F21_01_Zufriedenheit_Leben<- as.numeric(data_multi$F21_01_Zufriedenheit_Leben)
+data_multi$F21_02_Zufriedenheit_Studium<- as.numeric(data_multi$F21_02_Zufriedenheit_Studium)
+data_multi$F21_03_Zufriedenheit_Partnerschaft<- as.numeric(data_multi$F21_03_Zufriedenheit_Partnerschaft)
+```
+
+Wir brauen das Modell nach der Logik:  *AV ~ UV1 + UV2 + ...*
+```{r}
+lm4<- lm(F21_01_Zufriedenheit_Leben ~ F21_02_Zufriedenheit_Studium + F21_03_Zufriedenheit_Partnerschaft , data=data_multi)
+summary(lm4)
+```
+
+Bringt das multiple Modell eine bessere Vorhersagen, als wenn ich die Lebens-Zufriedenheit aus der Zufriedenheit mit der Partnerschafft alleine vorhersage?
+
+Modell erstellen *AV ~ UV*
+```{r}
+lm5<- lm(F21_01_Zufriedenheit_Leben ~ F21_03_Zufriedenheit_Partnerschaft, data=data_multi) 
+```
+
+```{r}
+summary(lm5)
+```
+
+Das Modell mit 2 Prediktoren hat eine höhere aufgeklärte Varianz. Da wir jedoch grundätzlich spärlich sein sollten bei der aufnahme weitere Prediktoren, prüfen wir nun ob der Zugewinn an Varianz auch statistische Signifikant ist. Hierfür führen wir eine Hierachische Regression mit beiden Modellen durch. Siehe Luhmann (2015 Kapitel 16.2.3)
+
+```{r}
+anova(lm5,lm4)
+```
+
+ => Wie interpretierne Sie das Ergebnis? 
+
+Wir müssen noch die Vorraussetzungen prüfen:
+
+Voraussetzung 1-4:
+Auch bei multiplen Regressionen funktioniert die Diagnostik ueber Plot:
+```{r}
+par(mfrow=c(2,2))    #4 Graphen pro seite
+plot(lm4)
+```
+
+```{r}
+dev.off() #setzt das Layout zurueck
+```
+
+Voraussetzung 5&6:
+
+Test auf Multikollinearitaet (Der VIF sollte immer unter 10 sein. )
+```{r}
+vif(lm4) 
+```
+
+Um die Korrelation zwischen verschiednenen Variablen zu beurteilen können wir auch wieder auf die Streudiagramm-Matrix zurückgreifen
+```{r}
+Zusammenhang <- data.frame(WPStudis$F21_01_Zufriedenheit_Leben,WPStudis$F21_02_Zufriedenheit_Studium,WPStudis$F21_03_Zufriedenheit_Partnerschaft)
+pairs.panels(Zusammenhang)
+```
+
+Test auf Unabhängigkeit der Fehler. Hierfür nutzen wir den Durbin Watson Test (Sollte nicht signifikant werden und die Pruefstatistik sollte relativ nahe an 2 liegen)
+
+```{r}
+durbinWatsonTest(lm4)  
+```
+
+Weitere Formen der Regressionsdiagnostik finden Sie unter: http://www.statmethods.net/stats/rdiagnostics.html
+
+
+#Übungsaufgabe 5.2
+
+Wir nutzen wieder den Prestige Datensatz. Wir wollen nun das Einkommen ´("income") wieder aus dem Bildungsgrad ("education") vorhersagen, wollen aber als 
+weitere Prediktoren das Prestige ("prestige") des Jobs und den Frauenanteil ("women") im Job dazunehmen. Erzeugen Sie das Regressionsmodell. 
+
+Wie hat sich der "Goodness of Fit" des Modells verändern?  
+
+Wie interpretieren Sie die Regressionsgewichte?
+
+
+
+##Multiple lineare Regression mit dichotomen Praediktoren 
+
+
+Frage: Bringt das Geschlecht noch zusaetzliche Vorhersagekraft?
+
+Normalweise muessten dichtome Variablen erst dummy-codiert werden. R macht dies bei Faktoren aber automatisch. Faktoren, die mehr als zwei Stufen haben, werden automatisch in mehrere Dummies codiert.
+
+Schauen wir uns die Dummy Codierung einmal an:
+```{r}
+data_multi$F19_Partnerschaft
+contrasts(data_multi$F19_Partnerschaft)
+```
+
+Nehmen wir an wir wollen die Zufriedenheit in der Partnerschaft aus der Zufriedenheit mit dem Leben vorhersagen
+Hierfür bauen wir folgendes Model (AV ~ UV1 + UV2) :
+```{r}
+lm8<- lm(F21_03_Zufriedenheit_Partnerschaft ~ F21_01_Zufriedenheit_Leben  , data=data_multi)  
+summary(lm8)
+```
+
+Nun bauen wir in das Modell den zusätzlichen dichotomen Prädiktor Partnerschaft (ja/nein) ein:
+```{r}
+lm9<- lm(F21_03_Zufriedenheit_Partnerschaft ~ F21_01_Zufriedenheit_Leben  + F19_Partnerschaft  , data=data_multi)  
+summary(lm9)
+```
+
+Bringt das Modell eine bessere Vorhersage als das Modell ohne den dichtomen Prädiktor?
+Zum Vergleich nutzen wir wieder eine hierachische Regression:
+```{r}
+anova(lm8,lm9)
+```
+
+Diagnostik:
+```{r}
+par(mfrow=c(2,2))    #4 Graphen pro seite
+plot(lm9)
+```
+Layout zurücksetzen:
+```{r}
+dev.off() 
+```
+
+##Übungsaufgabe 5.3 
+
+Können wir Vorhersagen, wann wieviele Passanten auf der Königsstrasse sind?
+
+Daten aus Excel laden
+```{r}
+library(readxl)
+Passanten <- read_excel("Passanten2019.xlsx")
+View(Passanten)
+```
+
+Versuch 1: Können wir aus den Wetterdaten, z.B. Sonnenscheindauer in Stunden und Regenmenge in Liter, die Besucherfrequnz auf der Königsstrasse (Mitte) vorhersagen?
+
+Nun bauen wir das Modell:
+
+```{r}
+lm1 <- lm(Passanten$Koenig_Mitte~Passanten$SONNE_H+Passanten$REGEN)
+summary(lm1)
+```
+
+Da die Besucherfrequenz zwischen Werktage und Sonn und Feiertagen sehr unterschiedlich ist, sollten wir dies als weitere dichtome Prädiktoren aufnehmen. Versuchen Sie die nominalskalierte Variable "Tag" in das Modell mit aufzunehmen - was passiert, wie ändert sich das Ergebnis?
+
+
+
+##Logistische Regression 
+
+
+Wenn die AV nominal skaliert ist brauchen wir eine logistische regression
+
+Beispiel-Frage: Koennen wir das Geschlecht einer Person aus ihrer Schuhgroesse vorhersagen?
+
+Schauen wir uns die AV zunächst mal an:
+```{r}
+summary(data_lm2$F3_Geschlecht)
+contrasts(data_lm2$F3_Geschlecht)
+```
+
+
+Vorraussetzungen:
+
+Die gute Nachricht ist, dass logistische Regression weder eine Normalverteilung der Residuen, noch Varianzhomogenität vorraussetzt. Auch ein linearer Zusammenhang zwischen AV und UV muss nicht gegeben sein. Dennoch gibt es eine Vorraussetzungen die erfüllt sein müssen: Die AV muss dichtom sein . Die Beobachtungen müssen unabhängig sein (Also kein Messwiederholungsdesign). Drittens, es sollte wenig oder keien Korrelation zwischen den UVs geben (Multikollinearität). Hierfür kann man eine Streudiagramm-Matrix verwenden. Da wir in diesem ersten BEispiel nur eine UV haben , ist dies jedoch nicht nötig.
+
+
+
+Für die logitische Regression nutzen wir das General Linear Model (GLM)
+
+logistisches Modell aufsetzen:
+
+Die spezifikation des Models mit der glm() funktion ist analog der lm() funktion, nur dass Sie hier
+zusätzlich das Argument "family=binomial" für die logistische Regression verwenden können
+
+```{r}
+lm10 <- glm(F3_Geschlecht ~ F5_Schuhgröße, data=data_lm2,family=binomial)
+summary(lm10)  
+```
+
+Die Regressions-Koeffizienten sind hier schwer zu interpretieren, da Sie sich auf Logit (natürlicher 
+Logarithmus des Wettquotienten) beziehen. Eine Erhöhung der Schuhgröße um eine Einheit veringert  
+den Logit des Geschlechts (Zur Erinnerung "1" war weiblich) um 2,8
+
+"Null deviances" entpricht den Residuen des Nullmodells im Vergleich zu den "Residual deviances" unseres Modells
+AIC: Je kleiner desto besser das Modell. Fisher scoring iterations sollten auch möglichst gering sein (<25)
+
+
+Da die Regressions-Koeffizienten bei einer Logistischen Regression nur schwer zu Interpretieren sind, ist es spannender eine Vorhersagefunktion zu bauen. Wir nutzen wieder"predict", bei logistischen Regressionsmodellen müssen wir jedoch noch das Argument "type="response" hinzufügen um eine Wahrscheinlichkeit zu erhalten (sonst erhalten  wir odds ratios)
+
+```{r}
+predict(lm10, data.frame(F5_Schuhgröße=43), type="response")
+```
+
+Wenn eine Person Schuhgröße 42 hat, wie hoch ist die Wahrscheinlichkeiten, dass es sich um eine Frau handelt?
+
+Der Dichteplot laesst sich dies auch sehr leicht erstellen. Bei Nominalen/Dichotomen Verteilungen nutzen wir hierzu die "cdplot" Funktion (cd steh für conditional densities)
+```{r}
+cdplot(F3_Geschlecht ~ F5_Schuhgröße, data=data_lm2)
+```
+
+##Übungsaufgabe 5.4
+
+Learning from Disaster
+
+Der Untergang der Titanic 1912 kostete 1512 Menschen das Leben. Die Platform Keggle stellt einen (echten) Datensatz mit 500 echten Personendaten zur Verfügung (https://www.kaggle.com/c/titanic). Neben dem Namen, haben wir Alter, Klasse, Zustiegsort, Kosten des Tickets und einige weiter Variablen. Ausserdem haben wir die Information ob die Person üblebt hat. Hierfür wollen wir nun logistisches Regressionsmodell bauen, welches möglichst gut vorhersagt ob eine Person überlebt hat oder nicht. Nutzen Sie hierfür: Geschlecht, Alter und Kabinenklasse. Interpretieren Sie das Ergebnis.
+
+```{r}
+titanic <-read.csv(file="titanic.csv")
+```
+
+#Hausaufgabe Luhman Kap. 16.7 
+
+Vorbereitungen:
+```{r}
+library(car)
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("erstis.RData")
+```
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+Data Frame ohne fehlende Werte erstellen
+```{r}
+kapitel.16 <- na.omit(data.frame(gs.1, ru.1, wm.1, neuro))
+```
+
+Nr. 1
+```{r}
+modell.1 <- lm(gs.1 ~ ru.1, data = kapitel.16)
+summary(modell.1)
+```
+```{r}
+predict(modell.1, list(ru.1 = 4))
+```
+
+Nr. 2
+```{r}
+modell.2 <- lm(gs.1 ~ ru.1 + wm.1, data = kapitel.16)
+summary(modell.2)
+```
+
+Ermittlung des mutliplen Korreltationskoeffizienten - m.E. nicht nötig da schwer zu interpretieren.
+```{r}
+sqrt(summary(modell.2)$r.squared)
+```
+
+VIF ist die bessere Lösung (Sollte < 10 sein)
+```{r}
+vif(modell.2)
+```
+
+Diagnose Plots:
+```{r}
+par(mfrow=c(2,2))
+plot(modell.2)
+```
+
+Test auf Unabhängigkeit der Fehler:
+Durbin Watson Test sollte nicht signifikant werden und die Pruefstatistik sollte relativ nahe an 2 liegen
+```{r}
+durbinWatsonTest(modell.2)  
+```
+
+
+Nr. 3
+```{r}
+modell.3 <- lm(gs.1 ~ ru.1 + wm.1 + neuro, data = kapitel.16)
+summary(modell.3)
+```
+
+Prüfung Vorraussetzungen:
+```{r}
+par(mfrow=c(2,2))
+plot(modell.3)
+vif(modell.3)
+durbinWatsonTest(modell.2)
+```
+
+Vergleich aufgeklärte Varianz:
+```{r}
+summary(modell.3)$r.squared
+summary(modell.2)$r.squared
+anova(modell.2, modell.3)
+```
+
+
+

@@ -1,0 +1,232 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+#Teil 4: Mittelwertsvergleiche
+
+##Vorbereitung
+
+```{r}
+load("WPStudis.Rdata")
+```
+
+
+##Übung 4.1
+
+Ermitteln Sie den kritischen t-Wert für einen Einseitigen T-Test mit einem Signifikanzniveau von 1% und 120 Freiheitsgraden
+
+
+##Lösung Übung 4.1
+
+```{r}
+qt(0.01,120)
+```
+
+##Übung 4.2
+Berechnen Sie den p-Wert, für einen T-Wert von -2 bei 4 Freiheitsgraden.
+
+##Lösung Übung 4.2
+
+```{r}
+pt(-2,4)
+```
+
+## Übung 4.3
+Führen Sie einen einseitigen Hypothesentest für die Hypothese: WP Studierende brauchen ein größeres Einkommen zum Glücklichsein, als die Population von Studierenden. Mittelwert des Einkommens zum Glücklichsein bei Studendierenden wurde in einer repräsentativen Befragung ermittelt: 1.620 EUR. Ignorieren Sie bei der Analyse den Ausreiser 100.000.
+
+Wie wäre das Ergebnis wenn wir zweiseitig testen?
+
+##Lösung Übung 4.3
+
+Einseitiger Test:
+
+```{r}
+WP_Stud_Einkommen <- WPStudis$F20_Einkommen_Glück[which(WPStudis$F20_Einkommen_Glück<=10000)]
+t.test(WP_Stud_Einkommen, mu=1620, alternative="greater")
+```
+
+Zweiseitiger Test:
+```{r}
+t.test(WP_Stud_Einkommen, mu=1620)
+```
+
+
+##Übung 4.4
+
+Nutzen Sie hierfür die Daten "anorexia" (Magersucht) aus dem  Package "MASS".
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(MASS)
+anorexia
+```
+
+In Spalte "Treat" Wird angegeben ob die Person der Kontrollgruppe "Cont", der Gruppe mit Cognitive Behavioural Treatment "CBT" oder der Gruppe mit Familiy Treatment "FT" angehört. Aufgabe: Ermittlen Sie ob das Cognitive Behavioural Treatment im Vergleich zur Kontrollgruppe einen Effekt zeigt. 
+
+Die Dritte Gruppe können wir aus den Daten löschen:
+```{r}
+anorexia_two <- anorexia[anorexia$Treat=="CBT" | anorexia$Treat=="Cont",]
+anorexia_two$Treat<-factor(anorexia_two$Treat)
+```
+
+Nutzen Sie hierzu die Gewichtsdifferenz. Diese müssen Sie Berechnen. 
+
+##Lösung Übung 4.4
+
+```{r}
+anorexia_two$Difference<-anorexia_two$Postwt-anorexia_two$Prewt
+
+```
+
+
+Mittelwerte graphisch vergleichen:
+```{r}
+boxplot(Difference ~ Treat, data=anorexia_two)
+```
+
+
+Mittelwerte tabellarisch vergleichen:
+```{r}
+tapply(anorexia_two$Difference,anorexia_two$Treat, mean, na.rm = TRUE)
+```
+
+oder
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(psych)
+describeBy(anorexia_two$Difference,anorexia_two$Treat, mat=TRUE)
+```
+
+
+Levene-Test:
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(car)
+leveneTest(Difference ~ Treat, data=anorexia_two, center=mean) 
+```
+
+Normalität der GruppenDaten:
+
+```{r}
+hist(anorexia_two$Difference[which(anorexia_two$Treat=="CBT")])
+hist(anorexia_two$Difference[which(anorexia_two$Treat=="Cont")])
+
+shapiro.test(anorexia_two$Difference[which(anorexia_two$Treat=="CBT")])
+shapiro.test(anorexia_two$Difference[which(anorexia_two$Treat=="Cont")])
+```
+
+t-Test ohne Welch-Korrektur (bei Annahme der Varianzhomogenitaet):
+```{r}
+t.test(Difference ~ Treat, data=anorexia_two, var.equal=TRUE)
+```
+
+Cohens d :
+```{r}
+d <-  2.1795*sqrt((1/15)+(1/13)) 
+round(d, 3)
+```
+
+oder mit Paket
+```{r}
+library(MBESS)
+ci.smd(ncp=2.1795, n.1=15, n.2=13)
+```
+
+
+##Übung 4.5
+
+Sie wollen die Wirksamkeit einer neuen Wunderpille zur Steigerung der Trinkfestigkeit überprüfen. Sie entsenden eine Gruppe von 10 Personen an zwei Abenden auf den Stuttgarter Wasen und Messen jeweils die getrunkene Menge Bier in Millilitern. 
+Beim ersten Besuch erhalten 5 Personen die Pille und 5 nicht. Beim zweiten Besuch erhalten jeweils die anderen 5 die Pille.
+ 
+Daten einlesen:
+
+```{r}
+Messwerte<-c(1250,2400,3000,2800,1400,900,5500,4700,1850,1250,1300,2560,3350,3300,2320,1920,6040,5060,2070,1390)
+Gruppe<-c(rep("ohne Pille", times =10),rep("mit Pille", times =10))
+Wunderpille <- data.frame(Messwerte,Gruppe)
+```
+
+Achtung wenn die Daten der Gruppen in zwei unterschiedlichen Spalten vorliegt (wide-Format), ist die Notation des t-test: *t.test(gruppe1, gruppe2, paired=TRUE)*
+
+Frage 1: Warum ist dieses Versuchsdesign besser als ein Test mit unabhängigen Gruppen?
+
+Frage 2: Führen Sie einen t-Test duch um die Frage zu Beantworten ob die Pille einen Effekt hat (Schritte von oben beachten)
+
+Frage 3: Wie wäre das Ergebnis, wäre wenn wir gerichtet gestestet hätten (Wir gehen davon aus, dass die Pille wirkt)?
+
+
+##Lösung Übung 4.5
+
+Daten untersuchen 
+
+Deskriptiv
+```{r}
+library(psych)
+describeBy(Messwerte,Gruppe, mat=TRUE)
+```
+
+Graphisch
+```{r}
+boxplot(Messwerte~Gruppe, data=Wunderpille, names=cbind("Mit Pille","Ohne Pille"))
+```
+
+Homogenität der Varianzen spielt beim abhängigen T-Test keine Rolle.
+
+Normalverteilung der Differenzen
+```{r}
+Differenzen <- Wunderpille$Messwerte[which(Wunderpille$Gruppe=="mit Pille")] - Wunderpille$Messwerte[which(Wunderpille$Gruppe=="ohne Pille")]
+hist(Differenzen)
+shapiro.test(Differenzen)
+```
+
+t-Test durchführen
+
+```{r}
+t.test(Messwerte~Gruppe,data=Wunderpille, paired=TRUE, var.equal=TRUE)
+```
+
+Effekt-Stärke berechnen
+```{r}
+my.newtest <- t.test(Messwerte~Gruppe,paired=TRUE, var.equal=TRUE)
+my.newtest 
+```
+
+Effektgröße r
+```{r}
+t<-my.newtest$statistic
+df<-my.newtest$parameter
+r <- sqrt(t^2/(t^2+df))
+round(r, 3)
+```
+
+Effektgröße d - Bei Messwiederholungs-Design lautet die Formel für Cohens d: t / sqrt(df) 
+```{r}
+d <-  4.1208 / sqrt(9) 
+round(d, 3)
+```
+
+Gerichteter Test
+```{r}
+t.test(Messwerte~Gruppe,data=Wunderpille, alt="greater",paired=TRUE)
+```
+Wir können nun also sagen, dass es recht unwahrscheinlich ist, dass die Pille nicht wirkt. 
+Mit einem anderen Verfahren, dem sog. Beyes Factor, können wir jedoch eine sinnvollere Aussage treffen...

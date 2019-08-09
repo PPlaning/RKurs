@@ -1,0 +1,347 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+#Teil 5: Regression
+
+##Übungsaufgabe 5.1
+Wir Nutzen Das Data-Set "Prestige" aus dem Package car. Schauen Sie sich die Daten an und machen Sie sich damit vertraut (*?Prestige*)
+
+- Können wir aufgrund der Bildung (Anzahl Jahre) das Einkommen ableiten? 
+- Wie lautet die Regressionsgrade? Wie Interpretieren Sie den B-Koeffizient?
+- Zeichnen Sie diese in den Scatterplot ein.
+- Wie hoch ist basierend auf Ihrem Modell das vorhergesagte Einkommen bei 12 Jahren Bildung?
+
+##Lösung Übungsaufgabe 5.1
+```{r}
+library(car)
+```
+
+Modell erstellen (AV ~ UV):
+```{r}
+lm3<- lm(income ~ education, data=Prestige)  
+lm3
+```
+Ergebnisse:
+```{r}
+summary(lm3)
+```
+
+Interpretation: 
+Bei einem Jahr mehr Bildung verdienen Personen durchschnittlich 898 USD mehr pro Monat.
+Bildung lohnt sich also! ;-)
+
+Vorraussetzung prüfen!
+```{r}
+par(mfrow=c(2,2)) 
+```
+
+Plots starten
+```{r}
+plot(lm3)
+```
+
+Setzt das Layout zurueck
+```{r}
+dev.off()
+```
+
+Die Scatterplots weißen darauf hin, das hier eine (lineare) Regression nicht anwendbar ist. Der Zusammenhang zwischen Bildung und Einkommen ist entweder nicht linear (er könnte z.B. Quadratisch, Logarithmisch etc. sein) oder er wird durch weitere Vriablen "moderiert" (z.B. Frauenanteil im Beruf?). Wir sollten hier in Betracht ziehen entweder ein nicht-lineares oder ein multivariates Modell zu erstellen (kommt noch). 
+
+Scatterplot mit Regressionsgerade
+```{r}
+plot(Prestige$education,Prestige$income,
+     xlab="Bildung",
+     ylab="Einkommen")
+abline(lm3)  #Einzeichnen der Regressionsgerade
+```
+
+Wir können nun mit einem beliebigen Wert für die Jahre der Bildung, Das Einkommen vorhersagen. 
+```{r}
+predict(lm3, data.frame(education=12))
+```
+
+##Übungsaufgabe 5.2
+
+Wir nutzen wieder den Prestige Datensatz. Wir wollen nun das Einkommen ´("income") wieder aus dem Bildungsgrad ("education") vorhersagen, wollen aber als 
+weitere Prediktoren das Prestige ("prestige") des Jobs und den Frauenanteil ("women") im Job dazunehmen. Erzeugen Sie das Regressionsmodell. 
+
+Wie hat sich der "Goodness of Fit" des Modells verändern?  
+
+Wie interpretieren Sie die Regressionsgewichte?
+
+
+##Lösung Übungsaufgabe 5.2
+
+```{r}
+lm6 <-lm(formula = income ~ education + prestige + women, data = Prestige)
+summary(lm6)
+```
+
+R2 hat sich fast verdoppelt. D.h. unser multivariates Modell hat eine doppelt so hohe Varianzaufklärung als das bivariate Modell.
+
+Regressionsgewicht education: Wenn Prestige und Frauenanteil konstant gehalten werden, bringt ein Jahr Bildung mehr nur noch  187 USD mehr Gehalt (Faktor ist auch nicht mehr signifikant).  Ein Punkt höher auf der Prestige Skala (bei konstantem Bildungsgrad und Frauenanteil) erhöht das Gehalt um 141 USD.  Ein Prozentpunkt höherer Frauenanteil (bei konstantem Bildungsgrad und Prestige) verringert das Gehalt um 50 USD. Die Daten sind von 1971 - hoffen wir das sich das geändert hat ;-)
+
+Wir müssen aber noch die Vorraussetzungen prüfen:
+
+
+Voraussetzung 1-4:
+Auch bei multiplen Regressionen funktioniert die Diagnostik ueber Plot:
+```{r}
+par(mfrow=c(2,2))    #4 Graphen pro seite
+plot(lm6)
+```
+
+```{r}
+dev.off() #setzt das Layout zurueck
+```
+
+Test auf Multikollinearitaet
+
+```{r}
+vif(lm6) #Der VIF sollte immer unter 10 sein.
+```
+
+Oder wieder mit Plot:
+```{r}
+library(psych)
+Zusammenhang <- data.frame(Prestige$income,Prestige$educatio,Prestige$prestige,Prestige$women)
+pairs.panels(Zusammenhang)
+```
+
+
+Test auf Unabhängigkeit der Fehler:
+```{r}
+durbinWatsonTest(lm6)  
+```
+
+Aufgrund der hohen Korrelation zwischen Prestige und Education, könnten wir eine der Variablen weglassen.
+
+Neues Modell ohne "education":
+```{r}
+lm7 <-lm(formula = income ~ prestige + women, data = Prestige)
+summary(lm7)
+```
+
+Das Modell hat einen vergleichbaren R2 Wert und eine deutlich größere F-Statistik
+
+Exkurs: Für Modelle mit genau 3 Variablen gibt es in R tolle Pakete für 3D Darstellung
+
+```{r}
+library(rgl)
+plot3d(Prestige$prestige,Prestige$women,Prestige$income, col="blue", size=1, type="s", main="3D Linear Model Fit")
+```
+
+##Übungsaufgabe 5.3 
+
+
+Können wir Vorhersagen, wann wieviele Passanten auf der Königsstrasse sind?
+
+Daten aus Excel laden
+```{r}
+library(readxl)
+Passanten <- read_excel("Passanten2019.xlsx")
+View(Passanten)
+```
+
+Versuch 1: Können wir aus den Wetterdaten, z.B. Sonnenscheindauer in Stunden und Regenmenge in Liter, die Besucherfrequnz auf der Königsstrasse (Mitte) vorhersagen?
+
+Nun bauen wir das Modell:
+
+```{r}
+lm1 <- lm(Koenig_Mitte~SONNE_H+REGEN, data=Passanten)
+summary(lm1)
+```
+Da die Besucherfrequenz zwischen Werktage und Sonn und Feiertagen sehr unterschiedlich ist, sollten wir dies als weitere dichtome Prädiktoren aufnehmen. Versuchen Sie die nominalskalierte Variable "Tag" in das Modell mit aufzunehmen - was passiert, wie ändert sich das Ergebnis?
+ 
+
+##Lösung Übungsaufgabe 5.3
+
+
+Modell spezifizieren:
+```{r}
+lm2 <- lm(Koenig_Mitte~SONNE_H+REGEN+Tag, data=Passanten)
+summary(lm2)
+```
+
+Nicht vergessen:  Was wir aber eigentlich vor der Regression machen solten: Vorraussetzung prüfen!
+
+Diese sind:
+
+ 1. Korrekte Spezifikation des Modells
+ 2. Normalverteilung der Residuen
+ 3. Homoskedastizität
+ 4. Ausreißer und Einflussreiche Datenpunkte
+ 5. Multikollinearität
+ 6. Unabhängigkeit der Risiduen
+
+
+Voraussetzung 1-4:
+```{r}
+par(mfrow=c(2,2))    #4 Graphen pro seite
+plot(lm2)
+```
+
+```{r}
+dev.off() #setzt das Layout zurueck
+```
+ 
+Voraussetzung 5&6:
+Test auf Multikollinearitaet (Der VIF sollte immer unter 10 sein.)
+```{r}
+vif(lm2)  
+```
+
+Um die Korrelation zwischen verschiedenen Variablen zu beurteilen können wir auch wieder auf die Streudiagramm-Matrix zurückgreifen
+```{r}
+Zusammenhang <- data.frame(Passanten$SONNE_H, Passanten$REGEN, Passanten$Tag)
+pairs.panels(Zusammenhang)
+```
+
+Test auf Unabhängigkeit der Fehler 
+
+Durbin Watson Test (Sollte nicht signifikant werden und die Pruefstatistik sollte relativ nahe an 2 liegen)
+```{r}
+durbinWatsonTest(lm2)  
+```
+Das Testergebis zeit, dass eine Autokorrelation der Daten vorliegt, was auf die AV "Tag" zurückzuführen ist. Hier wäre ein Zeitreihen Modell (z.B ARIMA-Modelle) besser geeignet, dies lassen wir an dieser Stelle jedoch unberücksichtigt.
+
+
+Vorhersagen erstellen:
+
+Wir können nun basierend auf dem Wochentag und dem wetterbericht sehr genau vorhersagen wieviele Personen auf der Königsstrasse unterwegs sein werden.
+
+Hierzu nutzen wir die *predict()* Funktion:
+
+```{r}
+predict(lm2, data.frame(SONNE_H=8,REGEN=0,Tag="Di"))
+```
+
+Ändern Sie doch mal die Werte - Nun haben Sie ein statistisches Modell mit echten Daten gebaut ;-)
+
+##Übungsaufgabe 5.4
+
+Learning from Disaster
+
+Der Untergang der Titanic 1912 kostete 1512 Menschen das Leben. Die Platform Keggle stellt einen (echten) Datensatz mit 500 echten Personendaten zur Verfügung (https://www.kaggle.com/c/titanic). Neben dem Namen, haben wir Alter, Klasse, Zustiegsort, Kosten des Tickets und einige weiter Variablen. Ausserdem haben wir die Information ob die Person üblebt hat. Hierfür wollen wir nun logistisches Regressionsmodell bauen, welches möglichst gut vorhersagt ob eine Person überlebt hat oder nicht. Nutzen Sie hierfür: Geschlecht, Alter und Kabinenklasse. Interpretieren Sie das Ergebnis.
+
+```{r}
+titanic <-read.csv(file="titanic.csv")
+```
+
+##Lösung Übungsaufgabe 5.4
+
+Wir vereinfachen das Datenset:
+```{r}
+titanic <-titanic[,c(2,3,5,6)]
+```
+
+Wir nehmen die NAs raus:
+
+```{r}
+titanic <-na.omit(titanic)
+```
+
+Wir machen aus der Passagier-Klasse noch einen Faktor:
+
+```{r}
+titanic$Pclass <- as.factor(titanic$Pclass)
+```
+
+
+Wir testen die Voraussetzungen:
+1) AV dichtotom (Überlebt/Nicht-Überlebt)
+2) Unabhängige Beobachtungen  (Messwiederholung in diesem Fall kaum vorstellbar)
+3) Multikollinearität
+
+```{r}
+library(psych)
+pairs.panels(titanic)
+```
+
+Bis auf P-Class und Age gibt es keine relvanten Korrelationen.
+
+Daher fahren wir fort mit der log. Regression (Tipp mit einem Punkt können Sie alle Variablen aus dem Datensatz nutzen:
+
+```{r}
+titanic_modell<- glm(Survived ~ ., data=titanic, family=binomial)
+summary(titanic_modell)  
+```
+
+Alternative schreibweise:
+```{r}
+titanic_modell<- glm(Survived ~ Age+Sex+Pclass, data=titanic, family=binomial)
+summary(titanic_modell)  
+```
+
+Interpretation:
+Alter hat einen sig. negativen Einfluss auf die Überlebenschancen, genauso wie das Geschlecht "Männlich" (Wichtig: Für weiblich könenn wir keine Aussagen treffen). Ausserdem haben Passagiere der Klassen 3 (bedingt auch Klasse 2) eine signifikant schlechtere Überlebenschance. Deckt sich das mit den im Film dargestellten Szenen?
+
+Nun könnten wir ein Modell bauen, dass vorhersagt ob ein Passagier übeleben wird oder nicht. Dieses könnten wir dann auf einen weiteren Fall anwenden. Da wir die Titanic ja nicht nochmal untergehen lassen wollen, versorgt und Kaggle mit weiteren (bisher nicht verwendeten) 391 Passagierdaten für die wir unser logistisches Regressionsmodell testen können:
+
+Daten laden:
+```{r}
+titanic.test <-read.csv(file="titanic_test.csv")
+
+```
+
+
+Wir nehmen wieder die NAs raus:
+
+```{r}
+titanic.test <-na.omit(titanic.test)
+```
+
+Wir machen aus der Passagier-Klasse noch einen Faktor:
+
+```{r}
+titanic.test$Pclass <- as.factor(titanic.test$Pclass)
+```
+
+Jetzt werden wir die Genauigkeit der Vorhersage überprüfen:
+
+1.Schritt wir berechnen mit unserem Modell die Überlebenswahrscheinlichkeit für jeden der 391 Passagiere:
+```{r}
+Wahrscheinlichkeiten <- predict(titanic_modell,newdata=titanic.test,type='response')
+```
+
+Jetzt entscheiden wir mit diesen wahrscheinlichkeiten ob jemand überlebt oder nicht (dichotom). also falls die Überlebenswahrscheinlichkeit über 0.5 ist wir er überleben (1) sonst nicht(0):
+```{r}
+UnserErgebnis <- ifelse(Wahrscheinlichkeiten > 0.5,1,0)
+```
+
+Jetzt vergleichen wir die Ergebnisse mit den echten Werten (denn wir wissen ja wieviele der 331 weiteren Passagiere Überlebt haben)
+
+```{r}
+Abweichung <- mean(UnserErgebnis != titanic.test$Survived)
+print(paste('Genauigkeit des Modells',1-Abweichung))
+```
+
+Wir haben nun also ein Modell mit dem wir mit rund 80% Wahrscheinlichkeit sagen können ob jemand den Untergang überlebt. Wenn man "blind" rät, hat man eine Trefferquote von50% - d.h. das Modell ist gar nicht schlecht. Um die Modellgüte noch besser zu beurteilen kann man eine sog. Konfusionsmatrix erstellen, diese zeigt die absoluten Häufigkeitn der Fehler 1.Art und 2.Art (Also Alpha- und Beta-Fehler)
+```{r}
+table(titanic.test$Survived, UnserErgebnis > 0.5)
+```
+
+Wir sehen also, dass das Modell 45 mal den Fehler den Fehler 1.Art (Alpha-Fehler) hatte und 23 mal den fehler 2.Art (Beta Fehler). D.h. für 45 Passagiere hat das Modell fälschlicherweise vorhergesagt dass sie überleben werden und bei 23 passagieren hat das Modell fälschlicherweise Vorhergesagt, dass sie nicht-überleben werden.
+

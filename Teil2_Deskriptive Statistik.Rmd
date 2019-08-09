@@ -1,0 +1,349 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 2 Deskriptive Statistik
+fontfamily: mathpazo
+
+editor_options: 
+  chunk_output_type: console
+---
+ 
+
+##SPSS Datensaetze einlesen
+R benoetigt eine Erweiterung, um SPSS-Daten einlesen zu koennen. Erweiterungen heissen Pakete.Mögliche Pakete, mit dem R  SPSS-Dateien lesen kann, sind 'foreign' und'haven'. beide sind standardmäßig bereits in der R-Installation vorhanden. Wenn Sie in R-Studio über das Menü "Import Dataset" ->SPSS auswählen nutzen Sie das 'haven' Paket.
+
+SPSS-Datensatz 'WPStudi.sav' mit Paket *haven* importieren (alternativ über Menü):
+
+```{r, message=FALSE, warning=FALSE}
+library(haven)
+WPStudis_mit_haven <- read_sav("WPStudis.sav")
+```
+
+Betrachten Sie die Daten. Nutzen Sie dazu die Befehle *View()* bzw. *str()*.
+
+Wir wiederholen den Import mit dem Paket *foreign*
+
+```{r, message=FALSE, warning=FALSE}
+library(foreign)
+WPStudis_mit_foreign <- read.spss(file="WPStudis.sav", to.data.frame = T)
+```
+
+Betrachten Sie die Daten wieder mit *View* bzw. *str*.
+
+Haben Sie die Unterschiede bemwerkt? Achten Sie z.B. auf die Variable Geschlecht. *Haven* erzeugt belabelte Vektoren bei denen die Faktorstufen numerisch sind (z.B. "0" für Weiblich), wärend *foreign* Faktoren mit den Labels als Faktorstufen erzeugt. Dies ist zwar besser, jedoch wird im *foreign* Paket z.B. die Variable *Alter* als Faktor erzeugt (sollte numerisch sein). In Summe haben alle Importfunktionen von SPSS Ihre Stärken und Schwächen, Sie sollten daher Grundsätzlich den importierten Datensatz nochmal von Hand prüfen und korrigieren.
+
+Daher machen wir jetzt mit dem bereits bereinigten Datensatz *WPStudis.RData* weiter.
+
+```{r, message=FALSE, warning=FALSE}
+load("WPStudis.Rdata")
+```
+
+
+Variablennamen anzeigen:
+```{r}
+names(WPStudis)
+```
+
+Variablenzusammenfassungen fuer die Variable Körpergröße mit der Funktion *summary()*
+
+```{r}
+summary(WPStudis$F4_Körpergröße)
+```
+
+Versuchen Sie das gleiche für Alter:
+
+```{r}
+summary(WPStudis$F2_Alter)
+```
+
+Kurze Zwischenaufgabe: Was ist die gößte Schuhgröße in WP?
+
+##Deskriptive Analysen:  
+
+Um sich die Werte als Häufigkeitsabellen ausgeben zu lassen nutzen wir den *table()* Befehl
+
+```{r}
+table(WPStudis$F6_Sternzeichen)
+```
+
+Für relative Häufigkeiten:
+```{r}
+prop.table(table(WPStudis$F6_Sternzeichen))
+```
+
+Etwas schöner als Prozentwerte und gerundet auf zwei Nachkommastellen
+
+```{r}
+round(100*prop.table(table(WPStudis$F6_Sternzeichen)),2)
+```
+
+Um nun zum Beispiel die durchschnittliche Körpergröße von Männern und Frauen zu ermitteln nutzen wir den *tapply* Funktion. *tapply* steht für table apply. D.h. die Funktion (hier mean) wird auf eine Menge von Variablen angewandt und als Tabelle ausgegeben.
+
+```{r}
+tapply(WPStudis$F4_Körpergröße, WPStudis$F3_Geschlecht, mean, na.rm = TRUE)
+```
+
+Dies können wir auch auf die Funktion "summary" anwenden
+
+```{r}
+tapply(WPStudis$F4_Körpergröße, WPStudis$F3_Geschlecht, summary, na.rm = TRUE)
+```
+
+Noch ausführlicher geht es mit der Funktion "describeBy" aus dem Psych paket
+
+```{r,message=FALSE, warning=FALSE}
+library(psych)
+describeBy(WPStudis$F4_Körpergröße, WPStudis$F3_Geschlecht, mat=TRUE)
+
+```
+
+##Maße der zentralen Tendenz:
+
+Median
+
+```{r}
+median(WPStudis$F4_Körpergröße)
+```
+
+Mittelwert
+```{r}
+mean(WPStudis$F4_Körpergröße)
+```
+
+Modalwert:
+Geht in R nur mit einem Trick - die erste Zahl ist der Modus:
+```{r}
+which.max( table(WPStudis$F4_Körpergröße) )
+```
+
+##Streuungsmaße
+
+Range
+```{r}
+range(WPStudis$F4_Körpergröße)
+```
+
+Standardabweichung
+```{r}
+sd(WPStudis$F4_Körpergröße)
+```
+
+Varianz
+```{r}
+var(WPStudis$F4_Körpergröße)
+```
+
+Quantile
+```{r}
+quantile(WPStudis$F4_Körpergröße)
+```
+
+Deskr. Statistiken für alle Variablen:
+```{r,message=FALSE, warning=FALSE}
+describeBy(WPStudis)
+```
+
+
+##Übung 2.1
+
+Nutzen Sie den WPStudis Datensatz und Berechnen Sie:
+  - Median und Standardabweichung der Schuhgröße der Studierenden
+  - Vergleichen Sie den Mittwelwert der Körpergröße von männlichen und weiblichen Studierenden
+  - Legen Sie im Datensatz(!) eine neue Variable an die die Körpergröße in Metern angibt
+
+
+
+##Hausaufgabe aus Luhmann Kap.9.8
+
+Nun schauen wir uns die "Hausaufgabe" aus Luhmann Kap. 9.8 an:
+
+Vorbereitungen:
+
+Benötigte Pakete laden
+```{r,message=FALSE, warning=FALSE}
+library(psych)
+library(CTT)
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("erstis.RData")
+```
+
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+Nr. 1
+
+```{r}
+sort(100*prop.table(table(gruppe)))
+```
+
+Nr. 2
+
+```{r}
+modalwert <- which.max(table(gruppe))
+rel.info <- (-1/log(4)) * sum(prop.table(table(gruppe)) * log(prop.table(table(gruppe))))
+modalwert
+rel.info
+```
+
+Nr. 3
+
+```{r}
+Absolut <- table(stim4)
+Relativ <- prop.table(Absolut)
+Prozent <- 100*Relativ
+Kumuliert <- cumsum(Prozent)
+häufigkeiten <- cbind(Absolut, Relativ, Prozent, Kumuliert)
+round(häufigkeiten, 1)
+```
+
+
+Nr. 4
+```{r}
+which.max(table(gs.1))
+range(gs.1, na.rm=TRUE)
+```
+
+
+Nr. 5
+```{r}
+table(geschl)
+prop.table(table(geschl))
+mean(alter, na.rm=TRUE)
+sd(alter, na.rm=TRUE)
+```
+
+
+Nr. 6
+```{r}
+neuro.transf <- score.transform(neuro)
+erstis$prozentrang.neuro <- neuro.transf$p.scores
+erstis$prozentrang.neuro[59]
+```
+
+
+Nr. 7
+```{r}
+which.max(table(stim5))
+median(stim5, na.rm=TRUE)
+```
+
+Nr. 8
+```{r}
+describe(lz.1)
+```
+
+
+Nr. 9
+```{r}
+bigfive.kap9 <- data.frame(neuro, extra, gewiss, vertraeg, intell)
+describe(bigfive.kap9)
+```
+
+
+Nr. 10
+```{r}
+describeBy(lz.1, geschl)
+```
+
+alternativ (ohne Paket):
+```{r}
+tapply(lz.1,geschl,mean, na.rm=TRUE)
+```
+
+
+##Korrelation 
+
+
+
+Bevor wir mit Korrelationen starten, kann es sinnvoll sein Kreuztabellen zu erzeugen:
+```{r}
+table (WPStudis$F7_Brille, WPStudis$F3_Geschlecht)
+```
+
+Grundsätzlich gibt es in R mehrere Möglichkeiten (wie immer) Korrelationen zu berechnen. Die cor() sowie cor.test() Funktionen sind ein Grundbestandteil von R. Weitere Korrelations-Funktionen sind in vielen Packages enthalten, z.B.rcorr() im Hmisc package. 
+
+Wir starten einfach :
+```{r}
+cor(WPStudis$F4_Körpergröße, WPStudis$F5_Schuhgröße, method="pearson")
+```
+
+Bei Ordinal-skalierten Variablen sollten wir Kendall's Tau oder Spearmans Rho verwenden.  Wichtig: Wir müssen R sagen was mit den fehlenden Werten passieren soll  Das Argument use="complete.obs" sorgt dafür, dass nur Datensätze die "complete" also ohne fehlende Werte sind verwendet werden.
+
+Kleiner Nachteil: Auch für die Nutzung von Kendall's Tau müssen beide Variablen als numeric formatiert sein.
+
+```{r}
+Zufriedenheit_Studium<-as.numeric(WPStudis$F21_02_Zufriedenheit_Studium)
+Zufriedenheit_Leben<-as.numeric(WPStudis$F21_01_Zufriedenheit_Leben)
+
+```
+
+
+```{r}
+cor(Zufriedenheit_Studium,Zufriedenheit_Leben,use="complete.obs",  method="kendall")
+```
+
+
+Was bedeutet das Ergebnis nun? Ein p-Wert könnte uns hier weiterhelfen - daher nutzen wir nun *cor.test()*.
+```{r}
+cor.test(Zufriedenheit_Leben,Zufriedenheit_Studium, method ="kendall")
+```
+
+Die Korrelation (von 0.3) ist auf dem 1%-Niveau signifikant (Vorraussetzungen beachten)
+
+Wenn wir uns unsicher sind ob die Vorraussetzungen (z.B. Normalverteilung) erfüllt sind können wir auch eine Bootstrap Korrelation berechnen. Hierfür müssen wir jedoch eine Funktion definieren
+```{r}
+bootTau<-function(BefragungWP,i) cor(Zufriedenheit_Leben[i], Zufriedenheit_Studium[i], use="complete.obs", method ="kendall")
+```
+
+Danach können wir Bootstrap ausführen- Zunächst muss das Package geladen werden
+```{r, message=FALSE, warning=FALSE}
+library(boot)
+```
+
+Dann führen wir aus - 1000 Zufallswiederholungen sind immer ein guter Wert. Sie können aber auch mehr berechnen lassen.
+```{r}
+boot_kendall<-boot(WPStudis, bootTau, 1000)
+boot_kendall
+```
+
+Wie wir sehen ist der "bias" also die Verfälschung der Daten rel. gering - wir können unserem Kendall Tau Korrelationskoeffizient also trauen
+Zusätzlich können wir uns nun auch die Bootstrap Konfidenzintervalle berechnen:
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+boot.ci(boot_kendall, conf=0.95)
+```
+
+Wir sehen, dass die 95% Konfidenzintervalle nicht den 0 Punkt schneiden. 
+Wir können uns also sehr sicher sein, dass es einen positiven Zusammenhang zwischen den Variablen gibt.
+
+
+
+##Übung 2.2 
+Nutzen Sie den Datensatz "erstis" von Luhmann(2015)
+Gibt es einen Zusammenhang zwischen Alter und Intelligenz?
+
+
+
+
+
+

@@ -1,0 +1,450 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 4 Mittelwertsvergleiche
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+#Mittelwertsvergleiche    
+
+
+Datensatz einlesen
+
+```{r}
+load("WPStudis.RData")
+```
+
+Wissenschaftliche Notation ausschalten (Ausser Sie mögen e+10 Notationen :-) )
+
+```{r}
+options(scipen = 999)
+```
+
+##Ermittlung von kritischen Werten und p-Werten 
+
+
+Um zu einem Wert einer bekannten Verteilung (z,t,chi-quadrat) den zugehörigen p-Wert zu ermitteln gehen wir wie folgt vor.
+Nehmen wir an wir wollen in einem zweiseitigem T-Test mit 35 Freiheitsgraden den kritischen t-Wert ermitteln:
+
+```{r}
+qt(0.025,35)
+qt(0.975,35)
+```
+
+Wir können in R auch sehr einfach direkt den empirischen p-Wert bestimmen, hierfür nutzen wir den Befehl *pt* und setzen den jeweiligen gefunden empirischen t-Wert ein
+
+```{r}
+pt(-2,35)
+```
+
+##Übung 4.1
+
+Ermitteln Sie den kritischen t-Wert für einen Einseitigen T-Test mit einem Signifikanzniveau von 1% und 120 Freiheitsgraden
+
+
+##Übung 4.2
+Berechnen Sie den p-Wert, für einen T-Wert von -2 bei 4 Freiheitsgraden.
+
+##z-Test 
+
+Beispiel: Die Mercedes Niederlassung Stuttgart führt pilothaft einen Virtual Reality Konfigurator ein. Nun möchte der GF wissen, ob dieser auch zu mehr verkauften Sonderausstattungen führt.
+Wir führen mit einer Stichprobe von N=36 Personen eine VR-Konfiguration durch und ermitteln einen Stichproben-Mittelwert von 7.900 EUR.Der Populationsmittelwert ist 7.500 EUR die SD in der Population ist 1.200 EUR
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(TeachingDemos)
+z.test(7900,7500,1200,alternative="greater",n=36)
+```
+
+Wie interpretieren sie das Ergebnis?
+
+
+##t-Tests für eine Stichprobe 
+
+
+Die 18-25 Jährigen Frauen in Deutschland haben aktuell eine durchschnittliche Größe von 166 Zentimeter.  Wir wollen prüfen ob die weiblichen WP Studierenden sich vom Bundesdurchschnitt unterschieden.
+
+Zunächst müssen wir die Vorraussetzungen prüfen. Diese sind im Einstichproben-Fall
+ 1) Intervallskalierung | Bei der Körpergröße gegeben
+ 2) Normalverteilung | Bei n>30 lt. zentralem Grenzwerttheorem gegeben
+
+```{r}
+WP_Studentinnen <- WPStudis$F4_Körpergröße[which(WPStudis$F3_Geschlecht=="weiblich")]
+t.test(WP_Studentinnen, mu=166)
+```
+
+Mit dem Argument alternative="less" bzw. alternative="greater" können Sie auch einseitige Tests durchführen.
+
+
+## Übung 4.3
+Führen Sie einen einseitigen Hypothesentest für die Hypothese: WP Studierende brauchen ein größeres Einkommen zum Glücklichsein, als die Population von Studierenden. Mittelwert des Einkommens zum Glücklichsein bei Studendierenden wurde in einer repräsentativen Befragung ermittelt: 1.620 EUR. Ignorieren Sie bei der Analyse den Ausreiser 100.000.
+
+Wie wäre das Ergebnis wenn wir zweiseitig testen?
+
+
+##t-Tests für unabhängige Stichproben 
+
+Frage: Sind Personen, die in einer Partnerschaft leben, zufriedener mit ihrem Leben?
+
+Notwendigen Schritte beim t-Test (siehe Fields, S.389)
+ 1. Eingabe / Import der Daten
+ 2. Daten untersuchen mit Dekriptiven Statistiken (Mittelwerte,Grafiken erzeugen) 
+   und Vorraussetzungen prüfen (insb. Skalen (!), Varianzhomogenität, Normalverteilung)
+ 3. t-Test durchführen
+ 4. Effekt-Stärke berechnen
+
+Schritt 1: Haben wir schon ( WPStudis)
+
+Schritt 2:
+
+Skalen: 
+Zufriedenheit mit dem Leben ist eigentlich ordinal Skaliert, wir sollten daher den U-Test verwenden! Da solche Skalen in der Praxis oft als Intervallskaliert angenommen werden, machen wir es jetzt auch so. Dafür müssen wir die Faktor-Variable
+
+"F21_01_Zufriedenheit_Leben" in eine numerische Variablen transformieren
+
+```{r}
+Zufr_Leben <- as.numeric(WPStudis$F21_01_Zufriedenheit_Leben)
+```
+Varianzhomogenität:
+
+Mittelwerte und Varianzen graphisch vergleichen:
+
+```{r}
+boxplot(Zufr_Leben ~ F19_Partnerschaft, data=WPStudis)
+```
+
+Mittelwerte tabellarisch vergleichen:
+```{r}
+tapply(Zufr_Leben,WPStudis$F19_Partnerschaft, mean, na.rm = TRUE)
+```
+
+Aufgrund der Skalen wäre jedoch besser:
+```{r}
+tapply(Zufr_Leben,WPStudis$F19_Partnerschaft, median, na.rm = TRUE)
+```
+
+Ausführlichere Variante aus dem *psych* Paket:
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(psych)
+describeBy(Zufr_Leben,WPStudis$F19_Partnerschaft, mat=TRUE)
+```
+
+Levene-Test als Entscheidungskriterium für die Varianzhomogenität:
+
+Notation: AV ~ Gruppe/Bedingung. Daten müssen im "Long-Format" vorliegen. Bei "Wide-Format" Daten mit Stack-Funktion transformieren. eim Levene-Test wird auf Varianzhomogenitaet geprueft.
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(car)
+leveneTest(Zufr_Leben ~ F19_Partnerschaft, data=WPStudis, center=mean) 
+```
+ 
+Prüfung auf Normalität:
+
+1) Histogram oder Bar-Chart der Verteilung der beiden Gruppen anzeigen lassen um die Normalität der Daten optisch zu beurteilen
+2) Einen Test der Verteilung der Differenzen durchführen z.B. Kolmogorov-Smirnov-Test oder Shapiro-Wilk Test (shapiro.test() )
+ Aufgrund der größe der Stichprobe jedoch in diesem Fall vernachlässigbar
+
+Schritt 3 :
+
+Aufgrund der Ergebnisse der Prüfung der t-Test Vorraussetzungen machen wir jetzt den t-Test mit Welch-Korrektur:
+
+Hinweis: *var.equal=FALSE* (also die korrigierte Version) ist die default/Voreinstellung - d.h. wir brauchen keinen Zusätzlichen Befehl.
+
+```{r}
+t.test(Zufr_Leben ~ F19_Partnerschaft, data=WPStudis) 
+```
+
+t-Test ohne Welch-Korrektur (bei Annahme der Varianzhomogenitaet) kann durchaus zu anderen Ergebnissen führen.
+
+```{r}
+t.test(Zufr_Leben ~ F19_Partnerschaft, data=WPStudis, var.equal=TRUE)
+```
+
+Schritt 4: 
+
+Um die Effekt-Stärke ohne ein Package zu berechnen können wir einfach direkt die Formel der Effekt-Größe in R eingeben. Hierfür gibt es auch Pakete - das Skript von Fields(2012) kommt jedoch ohne aus
+
+Allgemeine Form für die Effekt-Größe r:
+
+```{r}
+t<--1.98
+df<-87
+r <- sqrt(t^2/(t^2+df))
+round(r, 3)
+```
+
+Nach Cohen (1988) indiziert r = 0.1 einen kleinen Effekt, r=0.3 einen mittleren und r=0.5 einen starken Effekt. 
+
+Wir können die Werte auch direkt übernehmen lassen. Hierfür definieren wir den t-test von eben als Funktions-Objekt, z.B. mit dem Name mein.test
+
+```{r}
+mein.test <- t.test(Zufr_Leben ~ F19_Partnerschaft, data=WPStudis)
+
+t<-mein.test$statistic
+df<-mein.test$parameter
+r <- sqrt(t^2/(t^2+df))
+round(r, 3)
+```
+
+Die Effektstärke kann man übrigens auch einfacher berechnen,Sie entspricht der Punktbiserialen Korrelation, also der Pearson Korrelation zwischen den Variablen:
+
+```{r}
+cor(Zufr_Leben,as.numeric(WPStudis$F19_Partnerschaft), use="complete.obs", method="pearson")
+```
+
+Allgemeine Form für die Effekt-Größe Cohens d bei unabhängigen Designs ist t*sqrt((1/n1)+(1/n2)):
+
+n Bestimmen:
+```{r}
+table(WPStudis$F19_Partnerschaft)
+```
+
+
+```{r}
+d <-  t*sqrt((1/39)+(1/52)) 
+round(d, 3)
+```
+
+Nach Cohen (1988) ergibt d = 0.2 einen kleinen Effekt, d=0.5 einen mittleren und d=0.8 einen starken Effekt
+
+Die Effektstärke könnte man auch - wie von Luhmann(2015) beschrieben mit dem Paket MBESS ermitteln:
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(MBESS)
+ci.smd(ncp=t, n.1=39, n.2=52)
+```
+
+##Übung 4.4
+
+Nutzen Sie hierfür die Daten "anorexia" (Magersucht) aus dem  Package "MASS".
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(MASS)
+anorexia
+```
+
+In Spalte "Treat" Wird angegeben ob die Person der Kontrollgruppe "Cont", der Gruppe mit Cognitive Behavioural Treatment "CBT" oder der Gruppe mit Familiy Treatment "FT" angehört. Aufgabe: Ermittlen Sie ob das Cognitive Behavioural Treatment im Vergleich zur Kontrollgruppe einen Effekt zeigt. 
+
+Die Dritte Gruppe können wir aus den Daten löschen:
+```{r}
+anorexia_two <- anorexia[anorexia$Treat=="CBT" | anorexia$Treat=="Cont",]
+anorexia_two$Treat<-factor(anorexia_two$Treat)
+```
+
+Nutzen Sie hierzu die Gewichtsdifferenz. Diese müssen Sie Berechnen. 
+
+
+##t-Test fuer abhaengige Stichproben 
+
+Der abhängige T-test ist identisch mit dem unabhängigen, nur dass zusätzlich das Argument paired=TRUE verwendet wird.
+
+##Übung 4.5
+
+Sie wollen die Wirksamkeit einer neuen Wunderpille zur Steigerung der Trinkfestigkeit überprüfen. Sie entsenden eine Gruppe von 10 Personen an zwei Abenden auf den Stuttgarter Wasen und Messen jeweils die getrunkene Menge Bier in Millilitern. 
+Beim ersten Besuch erhalten 5 Personen die Pille und 5 nicht. Beim zweiten Besuch erhalten jeweils die anderen 5 die Pille.
+ 
+Daten einlesen:
+
+```{r}
+Messwerte<-c(1250,2400,3000,2800,1400,900,5500,4700,1850,1250,1300,2560,3350,3300,2320,1920,6040,5060,2070,1390)
+Gruppe<-c(rep("ohne Pille", times =10),rep("mit Pille", times =10))
+Wunderpille <- data.frame(Messwerte,Gruppe)
+```
+
+Achtung wenn die Daten der Gruppen in zwei unterschiedlichen Spalten vorliegt (wide-Format), ist die Notation des t-test: *t.test(gruppe1, gruppe2, paired=TRUE)*
+
+Frage 1: Warum ist dieses Versuchsdesign besser als ein Test mit unabhängigen Gruppen?
+
+Frage 2: Führen Sie einen t-Test duch um die Frage zu Beantworten ob die Pille einen Effekt hat (Schritte von oben beachten)
+
+Frage 3: Wie wäre das Ergebnis, wäre wenn wir gerichtet gestestet hätten (Wir gehen davon aus, dass die Pille wirkt)?
+
+##Alternative zum T-Test: Bayes Factor Analysis 
+
+Wir wiederholen unsere Analyse zur Wunderpille (Messwiederholung) mit einem Bayesischen Verfahren - Dem sog. Bayes Factor. Der Bayes Factor (BF) drückt das Verhältnis der Wahrscheinlichkeit der Alternativ-Hyopthese zur Wahrscheinlichkeit der Nullhypothese aus. Ein BF>1 sagt aus, dass die Daten unter Annahme der H1 wahrscheinlicher sind ein BF<1 sagt aus, dass die Daten unter Annahme der H0 wahrscheinlicher sind
+Ein BF von 4 sagt z.B. aus, dass das beobachtete Ergebnis 4-mal wahrscheinlicher unter Annahme der H1 ist als unter Annahme der H0.  Größter Vorteil des BF im Vergleich zum p-Wert: Die Stichprobengröße verfälscht das Ergebnis nicht!
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(BayesFactor)
+```
+
+Wir nutzen die Funktion ttestBF() mit x=Werte am ersten Messpunkt und y = Werte am zweiten Messpunkt -> Diese müssen also im Wide-Format vorliegen.
+
+```{r}
+WP_wide<-unstack(Wunderpille)  #Bringt die Daten in das Wide Format
+
+ttestBF(x = WP_wide$mit.Pille, y = WP_wide$ohne.Pille, paired=TRUE, rscale="wide") 
+```
+
+Paired=True gibt an dass es sich um ein Messwiederholungsdesign handel (Funktion kann auch für unabhängige Daten verwendet werden)
+rscale="wide"gibt an, dass die Funktion die Effektstärke der Alternativ-Hypothese nicht korrigiert (default ist eine Korrektur auf 0.7 Standardabweichungen)
+
+Interpretation: Die beobachteten Ergebnisse sind rund 20-mal wahrscheinlicher unter der H1 (Pille wirkt) als unter der H0 (Pille wirkt nicht)
+
+
+
+##Hausaufgabe 13.5 aus Luhmann(2015) 
+
+
+Benötigte Pakete
+
+```{r,message=FALSE, warning=FALSE, paged.print=FALSE}
+library(psych)
+library(MBESS)
+library(car)
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("erstis.RData")
+```
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+
+Nr. 1
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+auswahl <- na.omit(data.frame(zuf.bel.1, zuf.bel.2))
+describe(auswahl)
+```
+t-Test für abhängige Stichproben
+```{r}
+t.test(zuf.bel.1, zuf.bel.2, paired=TRUE, alternative="greater")
+```
+
+Effektgröße
+```{r}
+sd.diff <- sd(zuf.bel.1 - zuf.bel.2, na.rm=TRUE)
+ci.sm(Mean=0.1496599, SD=sd.diff, N=49)
+```
+
+Meiner Meinung nach einfacher und ohne Paket ;-)
+```{r}
+d <-  1.596 / sqrt(48) 
+round(d, 3)
+```
+
+Nr. 2
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+describeBy(gewiss, geschl)
+```
+
+Levene-Test
+```{r}
+leveneTest(gewiss ~ geschl)
+```
+
+Welch-Test mit gerichteter Alternativhypothese
+```{r}
+t.test(gewiss ~ geschl, alternative = "greater")
+```
+
+Effektgröße
+```{r}
+ci.smd(ncp=2.5441, n.1=112, n.2=55)
+```
+
+Oder wieder ohne Paket ;-)
+```{r}
+d <-  2.5441*sqrt((1/115)+(1/55)) 
+round(d, 3)
+```
+
+Nr. 3
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+describeBy(lz.1,kinder)
+```
+
+Levene-Test
+```{r}
+leveneTest(lz.1 ~ kinder)
+```
+
+Normaler t-Test mit ungerichteter Alternativhypothese
+```{r}
+t.test(lz.1 ~ kinder, var.equal = TRUE)
+```
+
+Effektgröße
+```{r}
+ci.smd(ncp=0.5619, n.1=26, n.2=146)
+```
+
+Oder wieder ohne Paket ;-)
+```{r}
+d <-  0.56194*sqrt((1/26)+(1/149)) 
+round(d, 3)
+```
+
+
+Nr. 4
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+auswahl <- na.omit(data.frame(gs.1, gs.2))
+describe(auswahl)
+```
+
+t-Test für abhängige Stichproben 
+```{r}
+t.test(gs.1, gs.2, paired=TRUE, alternative="less")
+```
+
+Effektgröße
+```{r}
+sd.diff <- sd(gs.1 - gs.2, na.rm=TRUE)
+ci.sm(Mean=0.08018868, SD=sd.diff, N=53, conf.level=.95)
+```
+
+Mal wieder meiner Meinung nach einfacher und ohne Paket ;-)
+```{r}
+d <-  0.74597 / sqrt(52) 
+round(d, 3)
+```
+
+Nr. 5
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+describe(lz.1)
+```
+
+t-Test für eine Stichprobe mit gerichteter Alternativhypothese
+```{r}
+t.test(lz.1, mu = 20.95, alternative="greater")
+```
+
+Effektgröße
+```{r}
+ci.sm(Mean = 24.53-20.95, SD = 5.62, N = 189)
+```
+
+Oder wieder ohne Paket ;-)
+```{r}
+d <-  8.7718 / sqrt(188) 
+round(d, 3)
+```

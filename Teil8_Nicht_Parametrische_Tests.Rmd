@@ -1,0 +1,326 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 8 Nichtparametrische Tests
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+##Vorbereitung
+
+Datensatz einlesen (Sie muessen natuerlich noch Ihren Pfad aendern)
+```{r}
+load("WPStudis.RData")
+```
+
+Wissenschaftliche Notation ausschalten (Ausser Sie mögen e+10 Notationen :-) )
+```{r}
+options(scipen = 999)
+```
+
+##Chi-Quadrat Anpassungstest 
+
+Mit diesem Test koennen Sie eine nominalskalierte Variable auf eine bestimmte Verteilung testen.
+
+Beispiel:
+An einer Umfrage haben 60 Personen, 37 Männer und 23 Frauen teilgenommen.
+Frage: Weicht diese Verteilung signfikant von der Gleichverteilung ab, d.h. kann es sich um eine Zufallsstichprobe einer gleichverteilten Grundgesamtheit handeln?
+
+```{r}
+chisq.test(c(38,22))
+```
+
+Spielen Sie mit den Werten, ab wann müssen wir die H0 ablehnen?
+
+Wie sieht es aus, wenn die Daten schon als Variablen vorliegen?
+
+Biespiel: Gibt es gleich viele Maenner und Frauen in WP? Oder Brillentraeger und nicht Brillentraeger?
+
+Geschlecht:
+Zunächst legen wir die Tabelle an und speichern diese unter einer neuen Variablen:
+```{r}
+geschlecht <-table(WPStudis$F3_Geschlecht)
+```
+
+Schauen wir uns die Verteilung mal an:
+```{r}
+geschlecht
+prop.table(geschlecht)
+```
+
+Nun führen wir den Test durch
+```{r}
+chisq.test(geschlecht)
+```
+
+Wie Interpretieren Sie das Ergebnis?
+
+Was wäre wenn wir von einer 20/80 Verteilung in der Population ausgegangen wären:
+```{r}
+chisq.test(geschlecht, p=c(.2,.8))
+```
+
+##Übung 7.1
+
+
+Führen Sie den Chi-Quadrat Anpassungstest für Brillenträger durch. Gehen Sie von einem Anteil der Brillenträger in Deutschland von 40% aus. Weichen die WP-Studierenden von der Bevölkerung signifikant ab?
+
+
+##Mehrfelder Chi-Quadrat Test (Chi-Quadrat-Unabhaengigkeits-Test) 
+
+
+Mit diesem Test lassen sich 2 nominalskalierten Variablen (2- oder mehrstufig) auf stochastische Unabhaengigkeit testen.
+
+Frage: Gibt es einen Unterschied zwischen Maennern und Frauen bezueglich Schokoladensorten-Konsum?
+
+Wir erzeugen den Datensatz - Werte zeigen den Konsum dreier Sorten in Gramm/ Monat 
+```{r}
+Männer = c(105, 127, 97)
+Frauen = c(103, 111, 133)
+```
+
+Jetzt wird eine Tabelle erzeugt
+```{r}
+Schokolade = as.table(rbind(Männer, Frauen))
+```
+
+Die Variablen können wir nun wieder löschen
+```{r}
+rm(Männer,Frauen)
+```
+
+Jetzt bekommen die Spalten noch Namen
+```{r}
+colnames(Schokolade) <- c('Vollmilch', 'Vollnuss', 'Nugat')
+```
+
+Schauen wir uns die Daten mal an:
+```{r}
+Schokolade
+```
+
+Sie können sich in R auch die Randsummen berechnen lassen
+```{r}
+addmargins(Schokolade)
+```
+
+Jetzt kommt der Test
+```{r}
+chisq.test(Schokolade)
+```
+
+Interpretation: ist der Test signifikant, liegt keine stochastische Unabhaengigkeit vor,d.h. wir haben einen signifikaten Zusammenhang zwischen den Variablen.
+
+Wie sieht es aus, wenn die Daten als Variablen vorliegen? -> Notation ist *chisq.test(Variable1,Variable2)*
+
+
+##Übung 7.2 
+
+Frage: Gibt es einen Zusammenhang zwischen Geschlecht und Brillentraegern bei den WPlern?
+
+
+##Rangsummentest Wilcoxon-Test/ Mann-Whitney-U-Test 
+
+Da die beiden Tests mathematisch das gleiche Ergebnis erzielen,  reicht es aus einen zu kennen. Beide Tests sind das non-parametrische Pendant zum t-Test - Werden also genutzt um Mittelwertsunterschiede bei genau 2 Gruppen zu untersuchen.
+
+Beispiel: Sind Personen, die in einer Partnerschaft leben, zufriedener mit ihrem Leben?
+
+Daten vorbereiten:
+```{r}
+partnerschaft <- WPStudis$F19_Partnerschaft
+zufriedenheit_leben <- as.numeric(WPStudis$F21_01_Zufriedenheit_Leben)
+```
+ 
+Schauen wir uns das erstmal deskriptiv an:
+```{r}
+tapply(zufriedenheit_leben, partnerschaft, mean, na.rm=TRUE)
+```
+
+Nun führen wir den Test durch
+```{r}
+wilcox.test(zufriedenheit_leben~partnerschaft)
+```
+
+Wie interpretieren Sie das Ergebnis?
+
+Der Wilcoxon-Test für für abhängige Stichproben (sog. Wilcoxon Signed-Rank Test) funktioniert identisch mit dem zusätzlichen Argument "paired=TRUE" - also wie beim bereits bekannten T-Test
+
+##Übung 7.3 
+
+Nutzen Sie die Daten "immer" aus dem Paket MASS
+```{r, message=FALSE, warning=FALSE}
+library(MASS)
+immer
+```
+
+Die Daten zeigen das Ernteergebnis von Felder an zwei Messzeitpunkten Y1 (1931) und Y2 (1932).Gibt es einen statistisch signifikanten Unterschied zwischen den Ernteerträgen in den beiden Jahren? (Auf 5% Niveau)
+
+Die Untersuchung auf Normalität der Differenzen zeigt eine Schiefe in der Verteilung:
+```{r}
+y<- immer$Y1-immer$Y2
+shapiro.test(y)
+```
+
+Obwohl der Test nicht ganz signifikant ist entscheiden wir uns für den Wilcoxon Test als Alternative zum T-Test.
+
+Aufgabe: Führen Sie den Wilcoxon Test durch und Interpretieren Sie das Ergebnis.
+
+
+##Einfaktorielle ANOVA nach Kruskal-Wallis (H-Test) 
+
+Der Kruskal-Wallis (H-Test) ist die nicht-parametrische Alternative zur einfaktoriellen ANOVA.Beim Kruskal-Wallis (H-Test) kann die UV mehr als 2 Stufen haben und die AV ordinal skaliert sein.
+
+Beispiel:
+Nehmen wir an ein Autohaus möchte testen wie zufrieden Kunden mit dem Kundendienst sind, auf der Skala sehr zufrieden (1) > eher zufrieden (2) > eher unzufrieden (3) > sehr unzufrieden(4) und wir testen 3 Gruppen mit je 10 Kunden (Kunden mit normalem Kundendienst (1 Tag), Kunden mit 4h Express Service, Kunden mit 2h Express Service )
+
+Frage: Gibt es Unterschiede in der Zufriedenheit mit dem Kundendienst zwischen den 3 Gruppen?
+
+Wir Importieren die Daten:
+```{r}
+Zufriedenheit_Autohaus<-c(2,1,3,2,4,1,2,4,2,3,2,2,2,3,2,1,3,2,1,3,2,1,2,1,1,2,1,2,1,1)
+Gruppe<-factor(c(rep("Gruppe_K",10),rep("Gruppe_4h",10),rep("Gruppe_2h",10)))
+Autohaus <- data.frame(Zufriedenheit_Autohaus, Gruppe)
+```
+
+Schauen wir uns da zunächst wieder deskriptiv an:
+```{r}
+Autohaus
+tapply(Autohaus$Zufriedenheit,Autohaus$Gruppe, summary)
+```
+
+Nun machen wir den Test:
+```{r}
+kruskal.test(Zufriedenheit_Autohaus~Gruppe, data=Autohaus)
+```
+
+Wie interpretieren Sie das Ergebnis?
+
+
+Die Post-hoc-Tests zum Test kommen ueber ein seperates Paket
+
+Es gibt verschiedene Pakete, die direkte post-hoc-Tests für den K-W Test erlauben z.B.:
+```{r, message=FALSE, warning=FALSE}
+library(agricolae)
+kruskal(Autohaus$Zufriedenheit_Autohaus, Autohaus$Gruppe, console = TRUE)   
+```
+
+##Übung 7.4  
+
+Nutzen Sie wieder den "Prestige" Datensatz aus dem Paket "car" und untersuchen Sie - nicht-parametrisch - ob es einen Unterschied zwischen dem Frauenanteil (Variable "women") der drei Berufs-Gruppen (Variable "type") gibt. Welche Gruppen unterscheiden sich signifikant?
+
+```{r, message=FALSE, warning=FALSE}
+library(car)
+```
+
+
+
+##ANOVA nach Friedman 
+
+Friedman ANOVA = Vergleich mehrerer abhaengiger Messzeitpunkte (Nicht-parametrische Alternative zur One-way repeated-measures ANOVA)
+
+
+Beispiel: Unterscheiden sich die unterschiedlichen Arten von Zufriedenheit?
+
+Als erstes bauen wir einen seperaten Dataframe auf
+```{r}
+WPStudis$F21_01_Zufriedenheit_Leben <- as.numeric(WPStudis$F21_01_Zufriedenheit_Leben)
+WPStudis$F21_02_Zufriedenheit_Studium <- as.numeric(WPStudis$F21_02_Zufriedenheit_Studium)
+WPStudis$F21_03_Zufriedenheit_Partnerschaft <- as.numeric(WPStudis$F21_03_Zufriedenheit_Partnerschaft)
+Data.Zufriedenheit <- as.data.frame(cbind(WPStudis$F21_01_Zufriedenheit_Leben,WPStudis$F21_02_Zufriedenheit_Studium,WPStudis$F21_03_Zufriedenheit_Partnerschaft))
+names(Data.Zufriedenheit) = c('Leben','Studium','Partnerschaft')
+```
+
+jetzt kommen noch die Missings raus
+```{r}
+Data.Zufriedenheit <- na.omit(Data.Zufriedenheit)
+```
+
+So sehen die Daten jetzt aus:
+```{r}
+Data.Zufriedenheit 
+```
+
+Hier kommt der Test
+```{r}
+friedman.test(as.matrix(Data.Zufriedenheit))
+```
+
+Für Post-Hoc Analysen gibt es wieder eigene Pakete z.B. "pgirmess". 
+Hier die Gruppenvergleiche (post-hoc)
+```{r, message=FALSE, warning=FALSE}
+library(pgirmess)
+friedmanmc(as.matrix(Data.Zufriedenheit))
+```
+
+
+##Hausaufgabe Luhmann Kapitel 18.5  
+
+Vorbereitungen
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("erstis.RData")
+```
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+Nr. 1
+```{r}
+table.1 <- table(geschl, uni1)
+table.1
+chisq.test(table.1)
+```
+
+Nr. 2
+```{r}
+wilcox.test(lz13, mu = 4)
+```
+
+
+Der echte mittelwert:
+```{r}
+median(na.omit(lz13))
+```
+
+Nr. 3
+```{r}
+wilcox.test(lz17 ~ kinder)
+```
+
+Nr. 4
+```{r}
+wilcox.test(lz13, lz17, paired = TRUE)
+```
+
+Interessant wären noch die Mittelwerte
+```{r}
+median(na.omit(lz13))
+median(na.omit(lz17))
+```
+
+Nr. 5
+```{r}
+kruskal.test(lz14 ~ wohnort.alt)
+```
+
+
+
+

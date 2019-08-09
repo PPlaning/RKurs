@@ -1,0 +1,72 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+
+# Teil 2 Deskriptive Statistik
+ 
+ 
+##Übung 2.1 
+
+Öffnen Sie Datensatz_WP_Studierende.sav und Berechnen Sie:
+  - Median und Standardabweichung der Schuhgröße der Studierenden
+  - Vergleichen Sie den Mittwelwert der Körpergröße von männlichen und weiblichen Studierenden
+  - Legen Sie im Datensatz(!) eine neue Variable an die die Körpergröße in Metern angibt
+
+##Lösung 2.1 
+
+Daten laden
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(haven)
+WPStudis <- read_sav("WPStudis.sav")
+WPStudis <- as.data.frame(WPStudis)
+
+```
+
+Auswertung durchführen:
+```{r}
+median(WPStudis$F5_Schuhgröße)
+sd(WPStudis$F5_Schuhgröße)
+tapply(WPStudis$F5_Schuhgröße, WPStudis$F3_Geschlecht, mean, na.rm = TRUE)
+
+```
+
+Neue Variable erstellen
+
+```{r}
+WPStudis$Größe_Meter <- 0.01*WPStudis$F4_Körpergröße
+```
+
+##Übung 2.2 
+Nutzen Sie den Datensatz "erstis" von Luhmann(2015)
+Gibt es einen Zusammenhang zwischen Alter und Intelligenz?
+
+
+##Lösung 2.2 
+
+```{r}
+load("erstis.RData")
+cor(erstis$alter, erstis$intell , method="pearson", use="complete.obs")
+cor.test(erstis$alter, erstis$intell, method ="pearson")
+```

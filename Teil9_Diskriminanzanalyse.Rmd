@@ -1,0 +1,291 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 9 Diskriminanzanalyse
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+##Lineare und Quadratische Diskriminanzanalyse
+
+Die Diskriminanzanalyse wird oft auch als grafische Form der MANOVA bezeichnet.
+ 
+
+Die Diskriminanzanalyse ist vergleichbar mit der in der Marktforschung sehr beliebten Korrespondenzanalyse ermöglicht jedoch genauere Ergebnisse (siehe Fiedler (1996), A Comparison of Correspondence Analysis and Discriminant Analysis))
+
+Die Diskriminanzanalyse ist die Basis für die Mustererkennung beim maschinelles Lernen und damit künstliche Intelligenz im weiteren Sinne.
+
+
+Wissenschaftliche Notation ausschalten
+```{r}
+options(scipen = 999)
+```
+
+
+##Beispiel 1aus dem Datensatz Mtcars. 
+
+Die Frage ist ob wir aus den technischen Daten: Leistung(hp), Verbrauch(mpg) und Gewicht(wt) vorhersagen können ob ein Fahrzeug einen 4, 6 oder 8-Zylinder Motor hat. Eine Regression können wir hier nicht verwenden, da hierfür die AV ja mindestens intervall-skalierrt sein muss. In diesem Beipsiel ist die AV kategoriell/nominalskaliert.
+
+Daher müssen wir die AV als Faktor (kategoriell/nominalskaliert) skalieren:
+
+```{r}
+cars<-mtcars
+cars$cyl<-as.factor(cars$cyl)
+```
+
+
+Zunächst müssen wir die Vorraussetzungen prüfen, diese sind:
+
+1) Normalität der Daten der UVs je Faktorstufe der AV
+    -> Shapiro test (Oder K-S, Lillifors etc.) für jede Faktorstufe der AV
+2) Varianzhomogenität (Bzw. Homogenität der Varianz-Kovarianz-Matrizen bei mehreren AVs) 
+    ->Leven Test bei einer AV, BoxM Test (Paket "heplots") bei mehreren AVs.
+3) Multikollinearität
+    -> VIF oder Streudiagram-Matrix
+
+
+Wir testen zunächst die Vorraussetzungen für eine ANOVA:
+
+1) Wir testen die abhängige Variable aller Gruppen auf Normalität (Da Stichproben je Gruppe <30)
+
+mpg
+```{r}
+shapiro.test(cars$mpg[which(cars$cyl==4)])
+shapiro.test(cars$mpg[which(cars$cyl==6)])
+shapiro.test(cars$mpg[which(cars$cyl==8)])
+```
+
+hp
+```{r}
+shapiro.test(cars$hp[which(cars$cyl==4)])
+shapiro.test(cars$hp[which(cars$cyl==6)])
+shapiro.test(cars$hp[which(cars$cyl==8)])
+```
+
+wt
+```{r}
+shapiro.test(cars$wt[which(cars$cyl==4)])
+shapiro.test(cars$wt[which(cars$cyl==6)])
+shapiro.test(cars$wt[which(cars$cyl==8)])
+```
+
+
+2) Test auf Varianzhomogenität:
+```{r, message=FALSE, warning=FALSE}
+library(car)
+leveneTest(mpg + hp + wt ~   cyl, data=cars, center=mean) 
+```
+
+3) Multikollinearität Multikollinearitaet (Der VIF sollte immer unter 10 sein. )
+
+```{r}
+library(psych)
+Zusammenhang <- data.frame(cars$mpg,cars$hp,cars$wt)
+pairs.panels(Zusammenhang)
+
+```
+
+
+Die lineare und insb. die quadratische Diskriminanzanalyse sind relativ Robust gegen verletzungen vor Varianzhomogenität sowie der Normalitätsnannahme. Aufgrund der hohen Korrelation zwischen den Prediktoren ist das Modell jedoch nicht optimal. Eine Alternative wäre eine Robuste Lineare Diskriminazanalyse (rLDA bzw. rQDA) z.B aus dem Paket *rrlda*.
+
+Wir starten mit der Diskriminanzanalyse:
+
+```{r}
+library(MASS)
+fit <- lda(cyl ~ mpg + hp + wt, data=cars, na.action="na.omit") 
+fit
+```
+
+
+Wir erzeugen einen Scatterplot
+
+```{r}
+plot(fit) 
+```
+
+Wir erzeugen ein Histogramm für die erste Diskriminanzfunktion (Diese schafft eine sehr klare Unterscheidung zwischen den Fahrzeugen)
+
+```{r}
+plot(fit, dimen=1)
+```
+
+
+Um die Vorraussagegenauigkeit zu testen können wir folgende Tabelle anlegen. Achtung: Vorraussagekraft bezieht sich natürlich nur auf die im Modell-Verwendeten Werte. (Hinweis *CV=True* aktiviert Cross-Validierung) 
+
+```{r}
+fit <- lda(cyl ~ mpg + hp + wt, data=cars, na.action="na.omit", CV=TRUE)  
+ct <- table(cars$cyl, fit$class)
+```
+
+Trefferquote je Faktorstufe
+```{r}
+diag(prop.table(ct, 1)) 
+```
+
+Gesamtvorraussagequalität   
+
+```{r}
+sum(diag(prop.table(ct)))  
+```
+
+
+
+
+Um sich die Ergebnisse der Diskiminanzanalyse jeweils von zwei Variablen zu betrachten empfiehl sich das Paket *klaR*.
+Dier ezeugt auch die zweidimensionalen Diskriminanzfelder und zeigt richtige (weiß) und falsche (rot) Vorhersagen.
+
+```{r}
+library(klaR)
+```
+
+Für das lineare Modell:
+```{r}
+partimat(cyl ~ mpg + hp + wt, data=cars,method="lda")  
+```
+
+
+Für das quadratische Modell (erlaubt sensitivere Vorhersagen):
+
+```{r}
+partimat(cyl ~ mpg + hp + wt, data=cars,method="qda")  
+```
+
+
+Eine weitre - graphisch sehr ansprechende - Möglichkeit die in der Diskriminanzanalyse gebildeten Cluster dazustellen ist die Funktion * clusplot* aus dem Paket "cluster".
+
+Hierbei ist jedoch zu beachten, dass die Klassen als Cluster dargestellt werden, die nicht der Diskriminanzfunktion entsprechen. 
+
+```{r}
+library(cluster)
+clusplot(cars, fit$class, color=TRUE, shade=TRUE, labels=2, lines=0)
+```
+
+
+
+## Beispiel 2 mit Prestige Datensatz 
+
+Können wir die Berufsgruppe vorhersagen (Whitecollar,Bluecollar oder Professional), wenn wir einige Informationen zum Beruf haben wie die durchschnittliche Bildungsdauer (education), das Einkommen (income), die Frauenquote (women) und das Prestige des Berufs (prestige)?
+
+Vorbereiten
+
+```{r}
+library(car)
+Prestige_Daten<-na.omit(Prestige)
+```
+
+Vorraussetzungen testen:
+
+1) Wir testen die abhängige Variable aller Gruppen auf Normalität (Da Stichproben je Gruppe <30)
+
+education
+```{r}
+shapiro.test(Prestige_Daten$education[which(Prestige_Daten$type=="prof")])
+shapiro.test(Prestige_Daten$education[which(Prestige_Daten$type=="wc")])
+shapiro.test(Prestige_Daten$education[which(Prestige_Daten$type=="bc")])
+```
+
+income
+```{r}
+shapiro.test(Prestige_Daten$income[which(Prestige_Daten$type=="prof")])
+shapiro.test(Prestige_Daten$income[which(Prestige_Daten$type=="wc")])
+shapiro.test(Prestige_Daten$income[which(Prestige_Daten$type=="bc")])
+```
+
+women
+```{r}
+shapiro.test(Prestige_Daten$women[which(Prestige_Daten$type=="prof")])
+shapiro.test(Prestige_Daten$women[which(Prestige_Daten$type=="wc")])
+shapiro.test(Prestige_Daten$women[which(Prestige_Daten$type=="bc")])
+```
+
+Prestige
+```{r}
+shapiro.test(Prestige_Daten$prestige[which(Prestige_Daten$type=="prof")])
+shapiro.test(Prestige_Daten$prestige[which(Prestige_Daten$type=="wc")])
+shapiro.test(Prestige_Daten$prestige[which(Prestige_Daten$type=="bc")])
+```
+
+
+2) Test auf Varianzhomogenität:
+```{r, message=FALSE, warning=FALSE}
+library(car)
+leveneTest(education + income + women + prestige ~ type , data=Prestige_Daten, center=mean) 
+```
+
+3) Multikollinearität Multikollinearitaet (Der VIF sollte immer unter 10 sein. )
+
+```{r}
+library(psych)
+Zusammenhang <- data.frame(Prestige_Daten$education,Prestige_Daten$income,Prestige_Daten$women,Prestige_Daten$prestige)
+pairs.panels(Zusammenhang)
+
+```
+
+
+
+Diskriminanzanalyse:
+
+```{r}
+library(MASS)
+fit <- lda(type ~ education + income + women + prestige, data=Prestige_Daten) 
+fit
+```
+
+Plot:
+
+```{r}
+plot(fit)
+```
+
+
+Vorhersagequalität:
+```{r}
+fit <- lda(type ~ education + income + women + prestige, data=Prestige_Daten, CV=TRUE) 
+ct <- table(Prestige_Daten$type, fit$class)
+```
+
+Trefferquote je Faktorstufe:
+```{r}
+diag(prop.table(ct, 1)) 
+```
+
+Gesamtvorraussagequalität:
+```{r}
+sum(diag(prop.table(ct)))  
+```
+
+Detailplots
+
+```{r}
+library(klaR)
+```
+
+Für das lineare Modell
+```{r}
+partimat(type ~ education + income + women + prestige, data=Prestige_Daten,method="lda")  
+```
+
+Für das quadratische Modell (erlaubt sensitivere Vorhersagen)
+```{r}
+partimat(type ~ education + income + women + prestige, data=Prestige_Daten,method="qda")  
+```
+
+
+
+
+

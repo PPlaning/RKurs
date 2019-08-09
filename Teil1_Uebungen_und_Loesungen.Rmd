@@ -1,0 +1,51 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+# Teil 1 Datenmanagement
+
+##Übung 1.1 
+
+ Erzeugen Sie eine Variable "V1" mit den Zahlen: 18 bis 3 in 3er Schritten
+ Erzeugen Sie eine Variabl2 "V2" mit 10 mal der Zahlenfolge 1,2,3
+
+##Lösung 1.1 
+
+```{r}
+V1<- seq(18,3, by = -3)
+V1
+```
+
+```{r}
+V2<- c(rep(seq(1,3), times =10))
+V2
+```
+    
+##Übung 1.2 
+
+- speichern Sie den Arbeitsbereich in eine Datei namens meine_daten.RData in das Arbeitsverzeichnis
+- beenden Sie RStudio und starten es erneut, wechselt das Arbeitsverzeichnis auf das Verzeichnis, in dem dieses R-Skript liegt und oeffnet es erneut
+- laden Sie den zuvor gespeicherten Arbeitsbereich und ueberpruefen Sie den Inhalt des Arbeitsspeichers mit ls() bzw. im entpsrechenden Fenster in R-Studio.
+ 
+ 

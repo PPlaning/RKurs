@@ -1,0 +1,433 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+## Einfuehrung: Syntax, Umgang mit Daten und Datensaetzen 
+
+R Syntax: '#' ist das Kommentarzeichen. Alles hinter einem '#' bis zum naechsten Zeilenumbruch wird ignoriert. 
+
+in RStudio wird hervorgehobene Syntax durch Strg+Enter (Windows) bzw. durch Cmd-Enter (MacOS) ausgefuehrt.
+
+'<-' weist das Ergebnis des Terms der rechten Seite dem Objekt auf der linken Seite des '<-' zu.
+
+Beispiel: 'x <- 3 + 4' speichert das Ergebnis des Terms '3+4' in das Objekt x. Um das Ergebnis zu sehen, muss x angezeigt werden:
+
+```{r}
+x <- 3 + 4
+```
+
+Hinweis: Objekte in R können Variablen, Datensätze (sog. data-frames) oder Funktionen sein
+                   
+Schauen, was im Speicher ist:
+
+```{r,results='hide'}
+ls()
+```
+                   
+x loeschen:
+
+```{r}
+rm(x)
+```
+
+
+In R arbeitet man in der Regel in einem Verzeichnis pro Projekt. Das Verzeichnis waehlt man,  indem man in RStudio im Fenster unten rechts ("Files"-Tab) in das gewuenschte Verzeichnis navigiert und dort unter "More" "Set As Working Directory" auswaehlt. Falls Sie mit einem Notebook (wie diesem) arbeiten, ist der Speicherort des Notebooks für R automatisch der relvante Arbeitspfad. Sie können dieses auch mit dem Befehl *setwd()* festlegen z.B. *setwd("C:/Working Directory"))*
+
+Arbeitsverzeichnis überprüfen:
+
+```{r,results='hide'}
+getwd()
+```
+
+
+Inhalt des Arbeitsverzeichnisses anzeigen:
+```{r,results='hide'}
+dir()
+```
+
+Hilfe erhalten:
+ - das Hilfesystem von R ist in RStudio unten rechts mit dem "Help"-Tab erreichbar
+ - Hilfe zu einem Stichwort gibt es mit ??"Stichwort": ??"mean"
+ - Hilfe zu einem bekannten Befehl gibt es mit ?befehl(), z.B.:
+ 
+```{r,results='hide',message=FALSE, warning=FALSE}
+?mean()
+```
+ 
+Schnelle Antworten gibt es auf Google - Da "R" jedoch schwer zu Googlen ist gibt es spezielle Suchamschinen wie auf www.rseek.org
+                   
+
+##Umgang mit Variablen 
+                   
+Numerische Variablen erzeugen: Zahlenfolgen lassen sich auf unterschiedliche Weise erzeugen, z.B. mit der seq() Funktion und dem ":" - Befehl:
+
+
+
+```{r}
+ID  <- seq (1:15)               
+ID
+```
+
+Oder durch angabe des Start- und Endpunkts, durch Komma getrennt. Zusätzlich können Sie durch *by* die Schritte definieren:
+
+```{r}
+ID2 <- seq(13, -1, by = -1)
+ID2
+```
+
+
+Variablen lassen sich auch mit dem *c()* Befehl erzeugen:
+
+
+```{r}
+Test <- c(1,3,5,7:10)
+Test
+```
+ 
+Oder mit dem *rep()* (für Repeat - Wiederholen) - Dies kann man natürlich auch kombinieren:
+
+```{r}
+GruppenNr <- c(rep(1, times = 3), rep(2, times = 3), rep(3, times = 3), 
+               rep(4, times = 3), rep(5, times = 3))
+GruppenNr
+```
+
+
+##Übung 1.1 
+
+ Erzeugen Sie eine Variable "V1" mit den Zahlen: 18 bis 3 in 3er Schritten
+ Erzeugen Sie eine Variable "V2" mit 10 mal der Zahlenfolge 1,2,3
+
+
+## Variablentypen
+                   
+ - Variablen koennen einen unterschiedlichen Typ haben. Die haeufigsten sind numeric, factor, und character.
+ - Viele Analysen brauchen den richtigen Typ, um zu funktionieren. Beispielsweise muss eine Variable, 
+   die die Zugehoerigkeit zu einer Gruppe numerisch angibt, vom Typ "factor" sein.
+   
+Schauen wir uns zunächst den Variablentyp mit der *class()* funktion an.
+```{r}
+class(GruppenNr)
+```
+
+Nun ändern wir auf den korrekten Variablen-Typ:
+       
+```{r}
+GruppenNr <- as.factor(GruppenNr)
+class(GruppenNr)
+```
+
+Schauen Sie sich nun auch den Variableninhalt nochmal an:
+
+```{r}
+GruppenNr
+```
+
+
+Wir können den Faktor-Stufen auch Labels geben (anders als in SPSS werden diese dann auch als Werte angezeigt)
+
+```{r}
+GruppenNr <- factor(GruppenNr, levels = c(1,2,3,4,5),
+                    labels=c("Gruppe1","Gruppe2","Gruppe3","Gruppe4","Gruppe5"))
+GruppenNr
+```
+
+
+Um den Inhalt einer Variable zu sehen, ruft man sie einfach auf *GruppenNr*. Um die Anzahl der Eintraege einer Variable zu sehen, benutzt man die *length()* - Funktion:
+
+```{r}
+length(GruppenNr)
+```
+
+
+Die Faktorstufen eines Faktors erhaelt man mit levels():
+
+```{r}
+levels(GruppenNr)
+```
+
+
+Eine kurze Zusammenfassung einer Variablen mit den wichtigsten deskriptiven Statistiken gibt die *summary()*-Funktion, deren Ausgabe sich danach unterscheidet, von welchem Typ die Variable ist:
+
+Mit Faktor:
+```{r}
+summary(GruppenNr)
+```
+
+Mit numerischer Variable:
+```{r}
+summary(ID2)
+```
+
+##Dateien speichern und laden 
+                   
+Wenn man "File -> Save As..." auswaehlt, speichert man das aktuelle Skript (die aktuelle Syntax) als Textdatei mit der Endung .R.
+                   
+Wenn man "Session -> Save Workspace As..." auswaehlt, wird der Inhalt des Workspace gespeichert.
+                   
+Entsprechend laedt man den Workspace mit "Session -> Load Workspace"
+
+In den neueren Versionen lassen sich auch "Projekte" speichern, diese beinhalten alle Datein (Skripte,Daten etc.) wie auch Einstellungen und sollten in einem getrennten Ordner angelegt werden.
+                   
+##Übung 1.2 
+
+- speichern Sie den Arbeitsbereich in eine Datei namens meine_daten.RData in das Arbeitsverzeichnis
+- beenden Sie RStudio und starten es erneut, wechselt das Arbeitsverzeichnis auf das Verzeichnis, in dem dieses R-Skript liegt und oeffnet es erneut
+- laden Sie den zuvor gespeicherten Arbeitsbereich und ueberpruefen Sie den Inhalt des Arbeitsspeichers mit ls() bzw. im entsprechenden Fenster in R-Studio.
+                   
+##Datensaetze 
+                   
+Wir legen einen kleinen Datensatz mit 15 VPs an, die in fuenf Dreiergruppen getestet wurden.  Dabei wurden fuer jede VP zwei Messwerte, Variable A und Variable B, erhoben:
+
+```{r}
+Datensatz <- data.frame(ID = ID,ID2 = ID2,GruppenNr = GruppenNr)
+                   
+Datensatz$Geschlecht <- c("w", rep(c("w", "m"), times = 7))
+Datensatz$VariableA <- rnorm(15)
+Datensatz$VariableB <- rnorm(Datensatz$VariableA)
+Datensatz$VariableC <- rnorm(Datensatz$VariableA)                 
+
+```
+
+Anzeigen des Datensatzes:
+
+
+```{r,results='hide'}
+Datensatz
+```
+
+oder alternativ:
+
+```{r,results='hide'}
+View(Datensatz)
+```
+
+
+
+Hier sieht alles schon sehr gewohnt aus (Vgl. Excel oder SPSS) man kann jedoch nichts bearbeiten.  Hierfür gibt es in R jedoch den Daten-Editor, den man mit edit() oder fix() startet. *fix* speichert die Änderungen automatisch. Bei *edit* muss man die Änderungen einem Objekt zuweisen.
+
+```{r,results='hide'}
+fix(Datensatz)
+```
+
+
+Löschen einer Variable in einem Datensatz
+
+```{r}
+Datensatz$VariableC <- NULL
+```
+
+
+Die Variablen liegen jetzt doppelt im Speicher: einmal im Datensatz und einmal einzeln. 
+Die einzelnen Variablen werden geloescht:
+
+```{r}
+rm(ID, ID2, GruppenNr) 
+```
+                   
+Uebersicht ueber die Struktur des Objektes: 
+
+```{r}
+str(Datensatz)
+summary(Datensatz)
+```
+
+
+Grundsätzlich können Daten im "Wide" und im "Long" Format vorliegen. R kann gundsätzlich mit beidem arbeiten (anders als SPSS), jedoch verlangen bestimmte R funktionen, dass die Daten in einem bestimmten Format vorliegen. Wir müssen sie daher transformieren.
+
+Die Daten in 'Datensatz' liegen im Wide Format vor, d.h. jede Variable hat eine neue Spalte (wie in SPSS)
+
+Nehmen wir z.B. an wir messen den die Klausurnote in Statistik von 6 Studierenden ohne Tutorium (Gruppe1) und 6 Studierenden mit Tutorium (Gruppe 2) um festzustellen ob das Tutorium sich positiv auf die Note auswirkt
+
+Die Daten leigen wie folgt vor: 
+
+```{r}
+Gruppe1 <- c(2.2,1.7,3.3,2.3,1.7,2)
+Gruppe2 <- c(2.7,1.7,2,3.3,1.7,2)
+Noten <- data.frame(Gruppe1,Gruppe2)
+```
+
+Schauen wir uns die Daten mal an (wide Format)
+
+```{r}
+Noten
+```
+
+Jetzt wandeln wir die Daten in das Long Format um 
+
+```{r}
+Noten.Long<-stack(Noten)
+Noten.Long
+```
+
+
+Das ganze geht natürlich auch umgekehrt
+
+```{r}
+Noten2<-unstack(Noten.Long)
+Noten2
+```
+
+'Noten2' ist nun wieder im Wide format also gleich 'Noten'
+                   
+##Datensaetze speichern und laden 
+
+Wenn man den Arbeitsbereich wie zuvor beschrieben speichert (Workspace -> Save Workspace As...), werden auch alle im Arbeitsbereich enthaltenen Datensaetze gespeichert.  
+                   
+Man kann Datensaetze auch als einzelne Datei abspeichern, um sie mit anderen Programmen, z.B. Excel oder SPSS, zu oeffnen. R speichert Datensaetze als Textdateien, i. d. R. als tab-delimited (tabulator-getrennt) oder als csv-datei (comma separated value).
+                   
+Zum Oeffnen in einem deutschen Excel (Komma-Notierung) speichert man so:
+
+
+```{r}
+write.csv2(Datensatz, file = "Datensatz.csv", row.names = FALSE)
+```
+                   
+##Umgang mit Datensaetzen 
+
+Datensaetze bestehen aus Zeilen (Faellen) und Spalten (Variablen).
+Zeilen und Spalten eines Datensatzes koennen mit eckigen Klammern ausgelesen werden:
+
+1. Zeile:
+```{r}
+Datensatz[1,]
+```
+
+1. Spalte:
+```{r}
+Datensatz[,1]
+```
+ 
+Wert der 1. Zeile in der 1. Spalte:
+```{r}
+Datensatz[1,1]
+```
+
+Faelle 1, 3 und 5:
+```{r}
+Datensatz[c(1,3,5),]
+```
+
+
+##Datensaetze sortieren und indizieren
+
+Datensatz nach der Variable ID2 absteigend sortiert anzeigen:
+
+```{r}
+Datensatz[order(Datensatz$ID2),]
+```
+
+Dies veraendert den Datensatz jedoch nicht dauerhaft:
+
+```{r}
+Datensatz
+```
+
+Erst wenn man den Datensatz mit dem neu sortierten Datensatz ueberschreibt, veraendert dieser sich dauerhaft:
+
+```{r}
+Datensatz <- Datensatz[order(Datensatz$ID2),]
+Datensatz
+
+```
+
+Wir sortieren ihn wieder zurueck: 
+```{r}
+Datensatz <- Datensatz[order(Datensatz$ID),]
+```
+
+##Umgang mit Datensaetzen: Fallauswahl
+
+Die Operatoren == (ist gleich), != (ungleich), >=, (groesser gleich), <= (kleiner gleich) sowie | (oder) und & (und) vergleichen JEDEN Wert einer Variable mit dem Vergleichsobjekt und liefern fuer jeden Vergleich TRUE oder FALSE zurueck: 
+
+Alle weiblichen:
+```{r}
+Datensatz$Geschlecht == "w"
+```
+
+Alle nicht männlichen:
+```{r}
+Datensatz$Geschlecht != "m"
+```
+
+Das ist sehr nuetzlich, weil man so Faelle anderer Variablen auswaehlen kann, die eine Bedingung erfuellen. Zum Beispiel alle Faelle von Variable A, bei denen das Geschlecht "w" ist:
+
+```{r}
+Datensatz$VariableA[Datensatz$Geschlecht == "w"]
+```
+
+oder ich speichere den Mittelwert in einer neuen Variable:
+
+```{r}
+x <- mean(Datensatz$VariableA[Datensatz$Geschlecht == "m"])
+x
+```
+
+Diese beiden Ausdruecke koennte man bspw. mit einem T-Test vergleichen 
+(dazu in einer spaeteren Veranstaltung mehr). Zuletzt wird der Datensatz geloescht:
+
+```{r}
+rm (Datensatz)
+```
+
+## "Hausaufgabe" aus Luhmann Kap.5.6 
+
+Nun schauen wir uns die "Hausaufgabe" aus Luhmann Kap.5.6 an:
+
+Nr. 1
+ 
+
+```{r}
+methode <- c(1, 3, 2, 2, 3, 1, 3, 2, 1, 1)
+woche1 <- c(4, 5, 9, 3, 3, 13, 11, 10, 12, 5)
+woche2 <- c(6, 8, 12, 5, 6, 16, 14, 12, 13, 9)
+```
+
+Nr. 2 
+```{r}
+methode <- factor(methode)
+class(methode)
+```
+
+Nr. 3
+```{r}
+basketball <- data.frame(methode, woche1, woche2)
+basketball
+```
+
+Nr. 4
+Skript speichern über Menü
+
+Nr. 5
+```{r}
+save(basketball, file="basketball.RData")
+```
+
+Nr. 6
+```{r}
+save.image(file="workspace.kapitel.5.RData")
+```
+
+Nr. 7
+```{r}
+remove(list = ls())
+```

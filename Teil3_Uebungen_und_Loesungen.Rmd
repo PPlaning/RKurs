@@ -1,0 +1,274 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+
+#Teil 3: Grafische Analysen
+
+##Übung 3.1 
+
+
+Entwerfen Sie ein Balkendiagramm für die Schuhgröße der WP Studierenden 
+
+##Vorbereitung
+```{r}
+load("WPStudis.RData")
+```
+
+
+##Lösung Übung 3.1
+
+```{r}
+barplot(table(WPStudis$F5_Schuhgröße), ylab="Schuhgröße", 
+        main="Schuhgröße")
+```
+
+Das sieht jetzt noch nicht richtig gut aus! Was koennen wir da machen?
+```{r}
+
+barplot(table(WPStudis$F5_Schuhgröße), ylim=c(0,30), xlab="Anzahl", 
+        main="Schuhgröße", col="tomato3", border = NA)
+
+```
+
+##Übung 3.2
+
+Wie haben echte Daten der Besucherfrequenz auf der Königsstrasse in Stuttgart sowie in München.
+
+Daten aus Excel laden:
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+library(readxl)
+Passanten <- read_excel("Passanten.xlsx")
+```
+
+Schauen Sie sich die Daten einmal an:
+```{r}
+View(Passanten)
+```
+
+Lassen Sie uns nun einige Variablen anlegen damit es übersichtlicher ist:
+
+```{r}
+Anzahl_Mitte<- Passanten$Stuttgart_Königstraße_Mitte
+Anzahl_Süd<- Passanten$Stuttgart_Königstraße_Süd
+Anzahl_MUC<- Passanten$München
+Tag <- ordered(Passanten$Tag,levels=c("Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"))
+```
+
+Aufgabe Teil 1 
+Versuchen Sie Boxplots zu erzeugen, die uns sagen, an welchem Wochentag wieviele Menschen auf der Königsstrasse unterwegs sind.
+
+Aufgabe Teil 2
+Versuchen Sie Boxplots zu erzeugen, die die Standorte Königstrasse Mitte, Süd und München vergleichen.
+
+
+##Lösung Übung 3.2
+
+Ansicht pro Wochentag in Stuttgart
+
+```{r}
+plot(Anzahl_Mitte~Tag)
+```
+
+
+Vergleich Stuttgarter Standorte und München
+
+Zunächst neuen Dataframe erzeugen:
+```{r}
+Vergleich<-data.frame(Anzahl_Mitte,Anzahl_Süd,Anzahl_MUC)
+```
+
+In das Long-Format bringen:
+```{r}
+Vergleich_long<-stack(Vergleich)
+```
+
+Grafik erzeugen:
+```{r}
+plot(Vergleich_long$values~Vergleich_long$ind)
+```
+
+##Übung 3.3
+
+Aufgabe: Laden Sie Simpsons.Rdata herunter. Die Daten zeigen die Bewertung jeder Simpsons Folge auf IMBD. Erstellen Sie eine Grafik die aufzeigt, wie sich die Bewertungen der Simpons über die Staffeln (engl.Seasons) verändert hat.
+
+## Lösung Übung 3.3: 
+
+Zur Aggregation der Daten nutzen wir *aggregate(value~factor, FUN=mean)*
+
+```{r message=FALSE, warning=FALSE}
+load("Simpsons.RData")
+SimAgg<-aggregate(Simpsons$Rating~Simpsons$Season, FUN=mean)
+```
+
+
+Variablennamen schöner machen:
+
+```{r}
+names(SimAgg)[1]<-"Season"
+names(SimAgg)[2]<-"Rating"
+```
+
+Nun erzeugen wir einen Linien-Plot:
+
+```{r}
+plot(SimAgg$Season,SimAgg$Rating,  
+          main="The Fall of the Simpsons",
+          xlab="Season",
+          ylab="Rating")
+          axis(1, at=seq(1,28))                           
+          par(lwd=4,col="gold")                          
+          lines(SimAgg$Season,SimAgg$Rating, type="o")   
+
+          par(col="black")                               
+          text(SimAgg$Season,SimAgg$Rating,labels=round(SimAgg$Rating,2),cex=1.5, pos=3)
+
+```
+
+         
+*Plot()* aktiviert die Plot Funktion - erzeugt hier jedoch nicht die Grafik, das passiert später mit *lines()
+*axis()* Fügt auf der X-Achse alle Werte hinzu
+*par()* Erzeugt eine rtwas dickere Linie und in Simpons-Farbe 
+*Die Grafik wird hier erzeugt*lines()* erzeugt die Grafik, type=""l" bzw. type="o" ist die Standardlinie, testen Sie auch andere Option z.B. type="s"
+*text()* fügt die Beschriftung der Punkte hinzu. Hier die IMBD Bewertung gerundet auf 2 Kommastellen
+
+Nachher Grafikparameter mit dev.off() zurücksetzen
+```{r}
+dev.off()
+```
+
+
+Visualisierung mit ggplot2 
+
+
+Quelle: https://github.com/imjakedaniels/SimpsonsScrape/blob/master/Simpsons%20Project/SimpsonsIMDB.Rmd
+
+
+```{r message=FALSE, warning=FALSE}
+
+library(magrittr)
+library(ggplot2)
+library(tidyverse)
+
+load("Simpsons.Rdata")
+
+Simpsons %>%
+  group_by(Season) %>%
+  summarise(Rating = mean(Rating)) %>%
+  
+  ggplot() +
+   #part 1: main line graph
+  geom_line(aes(x=Season, y=Rating), color = "Blue", size = 1.5) +
+  
+   #part 2: modifying the axis
+  scale_x_continuous(breaks=c(1:28), labels=c(1:28), limits=c(1,28)) +
+  
+   #part 3.1: highlighting Simpsons Mania
+  annotate("rect", xmin=2, xmax=9, ymin=8, ymax=8.9, alpha = .4, fill = "yellow") +
+  annotate("text", x=5.5, y= 8.6, label = "Simpsons Mania", color = "black") +
+  
+   #part 3.2: highlighting: Zombie Simpsons
+  annotate("rect", xmin=13, xmax=28, ymin=6.5, ymax=7.2, alpha = .2, fill = "red") +
+  annotate("text", x=20.7, y= 7.1, label = "Zombie Simpsons", color = "black") +
+  
+   #part 4: average line with label
+  geom_line(aes(x=Season, y=mean(Rating)), linetype=2, color = "Black") + 
+  annotate("text", x=27, y= 7.45, label = "avg", color = "black", size = 3) +
+  
+   #part 5: editing titles, caption and background
+  theme_bw() + 
+  labs(title = "The Steady Decline of The Simpsons",
+       subtitle = "Average Episode Ratings by Season",
+       caption = "Source: IMDB, August 2018",
+       x = "Season",
+       y = "Rating") +
+  theme(plot.title = element_text(family='', face = 'bold', colour = 'black', size = 20),
+        plot.subtitle = element_text(family='', face = 'italic', colour = 'black', size = 10),
+        plot.caption = element_text(family='', colour = 'black', size = 10),
+        axis.title.x = element_text(family='', face = 'bold', colour = 'black', size = 12),
+        axis.title.y = element_text(family='', colour = 'black', size = 12),
+        plot.background = element_rect(fill = "yellow"))
+
+```
+
+
+## Übung 3.4
+
+Wir laden die Daten (Befragung von Paaren nach der Aufteilung der Hausarbeit, aufgeteilt in 13 klassische Hausarbeiten)
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ade4)
+data(housetasks)
+```
+
+
+Aufgabe: Betrachten Sie die Daten. Erzeugen Sie eine Grafik um die Daten möglichst gut zu visualisieren.
+
+Tipp:
+```{r}
+data<-as.matrix(housetasks)  #Erzeugt eine Daten-Matrix (Vorraussetzung für viele Plots bzw. die Umwandlung in eine Tabelle)
+data<-100*prop.table(data, margin = 1)  #Erzeugt eine Kontinenztabelle mit Zeilenprozenten
+
+```
+
+##Lösung Übung 3.4
+
+```{r}
+data_trans <-t(data)  #Die Funktion t() erzeugt eine transponierte Matrix (X und Y Achse getauscht)
+barplot(data_trans,                      #Balkendiagramm
+        beside=T,                        #Gruppiertes Balkendiagramm
+        col=colors()[c(32,15,42,66)],    #4 Verschiedene Farben (Gerne andere Farben wählen)
+        legend=colnames(data),           #Legende
+        ylab="percentage",               #Y-Achsenbeschriftung
+        ylim=c(0,100),)                  #Y-Achse von 0 - 100 Prozent
+```
+
+
+Beispiel erweiterte Grafiken mir Paket  "gplots":
+Wir erstellen einen Balloonplot:
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library("gplots")
+Hausarbeit<- as.table(as.matrix(housetasks))  #Umwandeln in eine Tabelle
+balloonplot(Hausarbeit, 
+            main ="Aufteilung der Hausarbeiten",   #Titel
+            label = FALSE,  #Verzichtet auf den Wert je Ballon
+            show.margins = FALSE)   #Verzichtet auf die Summen je Zeile und Spalte
+
+```
+
+Wir erstellen eine Heatmap:
+```{r}
+heatmap.2(data_trans,margins=c(10,10),  
+          #Erzeugt etwas mehr Rand, damit die Y-Achsen Beschriftung voll lesbar bleibt
+          dendrogram = "none",  
+          #Entfernt standardmäßig erzeugte Clusterung der Spalten/Zeilen
+          trace="none",  
+          #Entfernt standardmäßig erzeugte Linien in jeder Spalte (sehr verwirrend)
+          col=colorpanel(20,low="white",high="firebrick"))  
+          #Erstellt ein Farbpalette mit n Farben von low bis high (Alternativ, feste                 Farbpallete wie bluered, rainbow, greenred etc.)
+
+```

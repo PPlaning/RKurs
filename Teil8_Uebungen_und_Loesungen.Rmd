@@ -1,0 +1,143 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+# Teil 7: Nicht-Parametrische Verfahren
+
+## Vorbereitung
+```{r}
+load("WPStudis.RData")
+```
+
+
+##Übung 7.1
+
+Führen Sie den Chi-Quadrat Anpassungstest für Brillenträger durch. Gehen Sie von einem Anteil der Brillenträger in Deutschland von 40% aus. Weichen die WP-Studierenden von der Bevölkerung signifikant ab?
+
+##Lösung Übung 7.1
+
+Tabellen erzeugen:
+```{r}
+brille <- table(WPStudis$F7_Brille)
+brille
+prop.table(brille)
+```
+
+Test:
+```{r}
+chisq.test(brille, p=c(.6,.4))
+```
+
+##Übung 7.2 
+
+Frage: Gibt es einen Zusammenhang zwischen Geschlecht und Brillentraegern bei den WPlern?
+
+##Lösung Übung 7.2
+
+Wir erzeugen eine 2x2 Tabelle:
+```{r}
+table(WPStudis$F3_Geschlecht,WPStudis$F7_Brille)
+```
+
+Dann kommt der Test:
+```{r}
+chisq.test(WPStudis$F3_Geschlecht,WPStudis$F7_Brille)
+```
+
+Zur Analyse helfen die Anteile:
+Hinweis: Um zellenweise Anteile zu bekommen hängt man im *prop.table()* Befehl nach den Variablen ein ",1" an, für Spaltenprozente ein",2"
+
+```{r}
+prop.table(table(WPStudis$F3_Geschlecht,WPStudis$F7_Brille),1)
+```
+
+Hinweis: Die Yates Korrektur wird bei 2x2 Tabellen automatisch angewendet. Diese korrigiert jedoch tendenziell zu Stark. Eine Alternative ist es R P-Wert esimulieren zu lassen:
+```{r}
+chisq.test(WPStudis$F3_Geschlecht,WPStudis$F7_Brille, simulate.p.value=TRUE)
+```
+
+##Übung 7.3 
+
+Nutzen Sie die Daten "immer" aus dem Paket MASS
+```{r, message=FALSE, warning=FALSE}
+library(MASS)
+immer
+```
+
+Die Daten zeigen das Ernteergebnis von Felder an zwei Messzeitpunkten Y1 (1931) und Y2 (1932).Gibt es einen statistisch signifikanten Unterschied zwischen den Ernteerträgen in den beiden Jahren? (Auf 5% Niveau)
+
+Die Untersuchung auf Normalität der Differenzen zeigt eine Schiefe in der Verteilung:
+```{r}
+y<- immer$Y1-immer$Y2
+shapiro.test(y)
+```
+
+Obwohl der Test nicht ganz signifikant ist entscheiden wir uns für den Wilcoxon Test als Alternative zum T-Test.
+
+Aufgabe: Führen Sie den Wilcoxon Test durch und Interpretieren Sie das Ergebnis.
+
+
+##Lösung Übung 7.3
+
+Deskriptive Untersuchung:
+```{r}
+mean(immer$Y1)
+mean(immer$Y2)
+```
+
+Grafische Untersuchung:
+```{r}
+boxplot(immer$Y1,immer$Y2)
+```
+
+wilcoxon Test:
+```{r, message=FALSE, warning=FALSE}
+wilcox.test(immer$Y1, immer$Y2, paired=TRUE) 
+```
+
+Wie interpretieren wir das Ergebnis?
+Hinweis: Der Warnhinweis auf "Bindungen" kommt immer. Bei Bindungen (gleiche Werte) könenn keine eindeutigen Ränge gebildet werden.
+
+##Übung 7.4  
+
+Nutzen Sie wieder den "Prestige" Datensatz aus dem Paket "car" und untersuchen Sie - nicht-parametrisch - ob es einen Unterschied zwischen dem Frauenanteil (Variable "women") der drei Berufs-Gruppen (Variable "type") gibt. Welche Gruppen unterscheiden sich signifikant?
+
+```{r, message=FALSE, warning=FALSE}
+library(car)
+```
+
+
+##Lösung Übung 7.4
+
+Deskriptiv:
+```{r}
+tapply(Prestige$women, Prestige$type, summary)
+```
+
+Kruskal-Wallis (H-Test):
+```{r}
+library(agricolae)
+kruskal.test(women ~ type, data = Prestige)
+kruskal(Prestige$women, Prestige$type, console = TRUE)
+```

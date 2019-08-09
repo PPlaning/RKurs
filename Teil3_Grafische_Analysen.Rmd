@@ -1,0 +1,645 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 3 Graphische Datenanalyse & Korrelation 
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+ 
+ 
+# Vorbereitung
+
+Datensatz 'WPStudis.RData' öffnen (Sie muessen ggf. noch Ihren Pfad aendern bzw. den Workspace neu definieren):
+
+```{r, message=FALSE, warning=FALSE}
+
+load("WPStudis.Rdata")
+
+```
+
+ 
+#Klassische Graphiken 
+
+
+# Der Plot 
+
+
+wir fangen einfach mal an. Beim "plot" befehl sucht R automatisch die geeignete Darstellungsform basierend auf der Art der Variablen. Eine schöne Übersicht wann welche Grafik aufgerufen wird finden Sie in Luhmann(2015), S.154.
+
+```{r}
+plot(WPStudis$F3_Geschlecht)
+```
+
+Die y-Achse könnte einen Tick höher sein
+
+```{r}
+plot(WPStudis$F3_Geschlecht, ylim=c(0,100))
+```
+
+Oder lieber in HfT Farben?
+
+```{r}
+plot(WPStudis$F3_Geschlecht, ylim=c(0,100), col="red", border=NA)
+```
+
+Es gibt auch andere Farben. Eine Übersicht über die in R mit Namen verfügbaren Farben erhält man mit dem Befehl *colors()*. Darüber hinaus gibt es jede mögliche RGB Farbe. Der BEfehlt hierfür ist *col="#009999"*
+```{r}
+plot(WPStudis$F3_Geschlecht, ylim=c(0,120), col="tomato", border=NA)
+```
+
+Wenn wir numerische Daten haben dann gibt der Befehl ein Streudiagramm (wenig Sinnvoll, x-Achse ist die Zeilennummer im Datensatz)
+
+```{r}
+plot(WPStudis$F4_Körpergröße)
+```
+
+Bei zwei numerischen Daten macht dies schon mehr Sinn. Zwei Variablen lassen sich sehr einfach in ein Modell zusammenführen. Hierfür benutzern wir die Tilde "~". Es Gilt AV ~ UV. 
+```{r}
+plot(WPStudis$F4_Körpergröße~WPStudis$F5_Schuhgröße)
+```
+
+Eine Regressionsgrade können wir duch den Befehl "abline) sowie die spezifikation des linearen modells (lm) hinzufügen.
+
+```{r}
+plot(WPStudis$F4_Körpergröße~WPStudis$F5_Schuhgröße)
+abline(lm(WPStudis$F4_Körpergröße~WPStudis$F5_Schuhgröße))
+```
+
+Falls eine Variable numerisch ist und die zweite Variable ein Faktor, bekommen wir mit dem selben Befehl einen Boxplot
+
+```{r}
+plot(WPStudis$F4_Körpergröße~WPStudis$F3_Geschlecht)
+```
+
+Falls beide Variable Faktoren sind, bekommen wir mit dem selben Befehl ein Mosaik-Diagramm. Dies entspricht einem gestapelten Balkendiagram, wobei die Breite der Balken (x-Ausdehnung) dem jeweiligen relativen Anteil der Variable entspricht.
+
+```{r}
+plot(WPStudis$F21_01_Zufriedenheit_Leben ~ WPStudis$F3_Geschlecht)
+```
+
+Hier nochmal, jedoch angereichert um Beschriftungen der Achsen. *xlab* und *ylab* bezeichnen jeweils die Achsen-Beschriftungen (Label). *main* gibt den Diagramm-Titel an. Weitere Funktionen können Sie mit*?plot()* herausfinden.
+
+```{r}
+plot(WPStudis$F21_01_Zufriedenheit_Leben ~ WPStudis$F3_Geschlecht,
+     xlab = "Geschlecht", 
+     ylab = "Zufriedenheit mit dem Leben",
+     main = "Zufriedenheit der WPler nach Geschlecht")
+
+```
+     
+
+Wenn wir wissen welche Art der Darstellung wir wollen, können wir es daher auch spezifizieren:
+
+
+##Balkendiagramm:
+
+
+Nehmen wir an wir wollen die Häufigkeiten der Antworten bei der Frage "Zufriedenheit mit dem Leben" darstellen:
+
+```{r}
+barplot(table(WPStudis$F21_01_Zufriedenheit_Leben))
+```
+
+Mit dem Argument *beside=TRUE* sorgt man dafür, dass statt gestapelten Balken, diese nebeneinander dargestellt werden
+
+Hier ein Beispiel aus dem R Standarddatensatz zu Todesraten (pro 1000 Einwohner):
+
+```{r}
+VADeaths
+```
+
+Erzeugen wir ein einfaches Balkendiagramm:
+```{r}
+barplot(VADeaths)
+```
+
+Die Lesbarkeit ist aufgrund der vielen Kategorien nicht optimal. Daher nun als gruppiertes Balkendiagramm mit dem Befehl *beside=TRUE*.
+
+```{r}
+barplot(VADeaths, beside=TRUE, legend=TRUE, ylim=c(0,100),
+        ylab="Tote pro 1000",
+        main="Sterberaten in Virginia 1940")
+```
+
+
+Auch Mittelwerte lassen sich als Balkendiagramm darstellen. Hierfür nutzen wir wieder den *tapply* Befehl. Sie können mit dem BEfehl *col* übrigens auch zwei Farbwerte angeben.
+
+```{r}
+barplot(tapply(WPStudis$F4_Körpergröße,WPStudis$F3_Geschlecht, mean, na.rm=TRUE ), ylim=c(0,200), col=c("#665588","#009999"))
+```
+
+Über das "psych" Paket lassen sich sehr Einfach Mittelwerte und Konfidenzintervalle erstellen. Wollen wir Zum Beispiel die Mittelwerte der Lebenszufriedenheit von Frauen und Männern vergleichen, gehen wir wie folgt vor.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(psych)
+error.bars.by(data.frame(WPStudis$F21_01_Zufriedenheit_Leben),WPStudis$F19_Partnerschaft, by.var=TRUE, eyes=FALSE)
+```
+
+##Aufgabe 3.1 
+
+Entwerfen Sie ein Balkendiagramm für die Schuhgröße der WP Studierenden 
+
+
+##Histogramm 
+
+
+Ein Histogram kann direkt mit *hist()* erstellt werden. Aus unserem Datensatz:
+
+```{r}
+hist(WPStudis$F4_Körpergröße)
+```
+
+Versuchen wir mal schrittweise diese Grafik zu "verschönern"
+
+Erhöhung der Balkenanzahl:
+
+
+```{r}
+hist(WPStudis$F4_Körpergröße, breaks=10)
+```
+
+Über "Breaks" kann die Anzahl der Gruppierungen geändert werden - spielen Sie doch mal mit diesem Wert. Statt die Anzahl der Balken zu definieren kann man auch ein sog. Kerndichte-Diagramm erstellen, hierbei werden die Häufigkeiten nicht als Balken, sondern als durchgezogene Linie dargsetellt.
+
+```{r}
+plot(density(WPStudis$F4_Körpergröße))
+```
+
+
+Titel verändern:
+```{r}
+hist(WPStudis$F4_Körpergröße, breaks=20,
+     main="Histogramm Körpergröße")
+```
+
+Achsen verlängern:
+```{r}
+hist(WPStudis$F4_Körpergröße, breaks=20,
+     main="Histogramm Körpergröße",
+     xlim=c(150,190), ylim=c(0,12))
+```
+
+Achsenbeschriftung verändern:
+```{r}
+hist(WPStudis$F4_Körpergröße, breaks=20,
+     main="Histogramm Körpergröße",
+     xlim=c(150,190), ylim=c(0,12),
+     xlab="Größe WP-Studierende",
+     ylab="Häufigkeit")
+```
+
+Balkenfarbe verändern:
+
+```{r}
+hist(WPStudis$F4_Körpergröße, breaks=20,
+     main="Histogramm Körpergröße",
+     xlim=c(150,190), ylim=c(0,12),
+     xlab="Größe WP-Studierende",
+     ylab="Häufigkeit",
+     col="tomato",
+     border="white")
+```
+
+
+##Boxplot 
+
+
+Ein Boxplot kann direkt mit *boxplot()* erstellt werden. Aus unserem Datensatz:
+
+```{r}
+boxplot(WPStudis$F2_Alter)
+```
+
+
+Auch Gruppierungen lassen sich leicht erzeugen:
+
+```{r}
+boxplot(WPStudis$F4_Körpergröße~WPStudis$F3_Geschlecht)
+```
+
+
+Wir koennen die Beschriftung auch von Hand vornehmen:
+
+```{r}
+boxplot(WPStudis$F4_Körpergröße~WPStudis$F3_Geschlecht,
+        col=("darkgreen"),
+        names=cbind("Männlich","Weiblich"))
+```
+
+
+##Übungsaufgabe 3.2
+
+Wie haben echte Daten der Besucherfrequenz auf der Königsstrasse in Stuttgart sowie in München.
+
+Daten aus Excel laden:
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+library(readxl)
+Passanten <- read_excel("Passanten.xlsx")
+```
+
+Schauen Sie sich die Daten einmal an:
+```{r}
+View(Passanten)
+```
+
+Lassen Sie uns nun einige Variablen anlegen damit es übersichtlicher ist:
+
+```{r}
+Anzahl_Mitte<- Passanten$Stuttgart_Königstraße_Mitte
+Anzahl_Süd<- Passanten$Stuttgart_Königstraße_Süd
+Anzahl_MUC<- Passanten$München
+Tag <- ordered(Passanten$Tag,levels=c("Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"))
+```
+
+
+Aufgabe Teil 1 
+Versuchen Sie Boxplots zu erzeugen, die uns sagen, an welchem Wochentag wieviele Menschen auf der Königsstrasse unterwegs sind.
+
+Aufgabe Teil 2
+Versuchen Sie Boxplots zu erzeugen, die die Standorte Königstrasse Mitte, Süd und München vergleichen.
+
+
+
+
+##Tortendiagramm 
+Ein Tortendiagramm kann direkt mit *pie()* erstellt werden. Aus unserem Datensatz:
+
+```{r}
+pie(table(WPStudis$F7_Brille), clockwise=T) 
+```
+
+
+Warum muss hier die Funktion "table" eingebaut sein?
+
+Schauen Sie sich doch mal zugrunde liegenden Daten jeweils an:
+
+Ohne Table Funktion:
+
+```{r}
+WPStudis$F7_Brille
+```
+
+Mit Table Funktion:
+
+```{r}
+table(WPStudis$F7_Brille)
+```
+
+
+##Streudiagramme 
+
+
+Einfach Streudiagramme haben wir ja schon kennengelernt:
+
+```{r}
+plot(WPStudis$F4_Körpergröße~WPStudis$F5_Schuhgröße)
+```
+
+
+R kann allerdings auch sogenannte Streu-Diagramm-Matrizen erstellen, die übersichtlich den Zusammenhang von mehr als 2 Variablen darstellen. Hierfür benötigen wir das "psych" Paket
+Hierfür erstellen wir einen Data-Frame mit den gewünschten Variablen. Diese müssen alle als Vektoren formatiert sein.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Zusammenhang <- data.frame(WPStudis$F4_Körpergröße, WPStudis$F5_Schuhgröße, WPStudis$F20_Einkommen_Glück)
+pairs.panels(Zusammenhang)
+```
+
+Alternativ gibt es weitere Pakete mit denen Streudiagramm-Matrizen erstellt werden könnnen. Insbesondere wenn viele Variabelen betrachtet werden sollen ist z.B.  *corrgram* eine gute Alternative.Hier einBeispiele:
+
+Beispiel corrgramm 
+```{r}
+corrgram(WPStudis)
+
+```
+
+oder mit Piecharts:
+```{r}
+corrgram(WPStudis, upper.panel=panel.pie)
+
+```
+
+
+Das Speichern von Grafiken geht mit R-Studio sehr einfach ->Export -> Save as Image (ggf. Auflösung anpassen)
+
+
+
+
+##Übung 3.3
+
+
+Aufgabe: Laden Sie Simpsons.Rdata herunter. Die Daten zeigen die Bewertung jeder Simpsons Folge auf IMBD. Erstellen Sie eine Grafik die aufzeigt, wie sich die Bewertungen der Simpons über die Staffeln (engl.Seasons) verändert hat.
+
+
+## Übung 3.4
+
+
+Wir laden die Daten (Befragung von Paaren nach der Aufteilung der Hausarbeit, aufgeteilt in 13 klassische Hausarbeiten)
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ade4)
+data(housetasks)
+```
+
+
+Aufgabe: Betrachten Sie die Daten. Erzeugen Sie eine Grafik um die Daten möglichst gut zu visualisieren.
+
+Tipp:
+```{r}
+data<-as.matrix(housetasks)  #Erzeugt eine Daten-Matrix (Vorraussetzung für viele Plots bzw. die Umwandlung in eine Tabelle)
+data<-100*prop.table(data, margin = 1)  #Erzeugt eine Kontinenztabelle mit Zeilenprozenten
+
+```
+
+
+##Hausaufgabe 11.9 aus Luhmann
+
+
+Vorbereitungen
+
+Benötigte Pakete laden
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(psych)
+library(gplots)
+library(car)
+
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+
+```{r}
+load("erstis.RData")
+```
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+Nr. 1
+```{r}
+barplot(table(gruppe), col = "white", ylim=c(0,70))
+```
+
+Nr. 2
+```{r}
+barplot(table(geschl,gruppe), beside=TRUE,  legend = TRUE, ylim=c(0,40))
+```
+
+Tipp: Wenn Sie die Ordinat bis 50 Skalieren, liegt die Legende nicht mehr über den Balken
+
+Nr. 3
+```{r}
+hist(alter, breaks=15, freq=FALSE)
+lines(density(alter, na.rm = TRUE), lwd = 3)
+```
+
+Nr. 4 
+
+4 Diagramme auf einer Seite darstellen
+```{r}
+par(mfrow=c(2,2))
+```
+
+Boxplot erzeugen
+```{r}
+boxplot(prok ~ gruppe)
+```
+
+Streudiagramm mit Lowess-Kurve
+```{r}
+temp <- na.omit(data.frame(prok, lz.1))
+plot(temp$prok, temp$lz.1)
+lines(lowess(temp$lz.1 ~ temp$prok))
+```
+
+Fehlerbalkendiagramm (aus dem Paket qplots)
+
+```{r}
+plotmeans(prok ~ gruppe)
+```
+
+Säulendiagramm mit Fehlerbalken
+
+```{r}
+desc = describeBy(gewiss, geschl, mat = TRUE)
+
+coord = barplot(desc$mean, names.arg = desc$group1, ylim=c(0,5))
+
+for(i in 1:nrow(desc)) {
+  arrows(coord[i], desc$mean[i]-desc$se[i], 
+         coord[i], desc$mean[i]+desc$se[i],
+         code = 3, angle = 90, length = .05)
+}
+
+par(mfrow=c(1,1))
+```
+
+Alternativ mit dem psych Paket:
+```{r}
+error.bars.by(data.frame(gewiss), geschl, ylim=c(0,5),by.var=TRUE,  bars=TRUE,eyes=FALSE,density=-10, alpha=.3173, 
+              main="Mittelwerte Gewissenhaftigkeit mit Standardfehler")
+```
+
+
+Nr. 5
+
+```{r}
+hist(prok)
+plot(density(prok, na.rm = TRUE))
+qqPlot(prok)
+```
+
+Nr. 6
+
+```{r}
+plot(gewiss, prok, 
+     main="Gewissenhaftigkeit und Prokrastination", 
+     xlab = "Gewissenhaftigkeit", 
+     ylab = "Prokrastination", 
+     col.lab = "red",
+     cex.lab = 2,
+     xlim = c(1,5), 
+     ylim = c(1,5),
+     pch = 16,
+     col = "blue")
+```
+
+
+
+
+##GGPlot2 
+
+
+ggplot2 ist der Goldstandard für Grafiken in R
+
+Paket aktivieren
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+```
+
+Hauptbefehle:
+*qplot()* wenn es schnell gehen muss
+*ggplot()* hier kann alles einzeln kontrolliert werden
+
+GGPlot2 laesst sehr komplexe Graphiken zu. Beispiele:
+
+*qplot()*
+```{r}
+qplot(data=WPStudis,x=WPStudis$F6_Sternzeichen,y=WPStudis$F5_Schuhgröße,color=WPStudis$F3_Geschlecht)
+```
+
+Die gleiche Grafik mit *ggplot()*
+
+```{r}
+ggplot() + geom_point(data=WPStudis,aes(x=WPStudis$F6_Sternzeichen,y=WPStudis$F5_Schuhgröße,colour=WPStudis$F3_Geschlecht))
+```
+
+Mit Hilfe von ggplot2 können wir nun auch detailliertere Grafiken zu unseren WP Studierenden erstellen.  z.B. das Schuhgrößen Beispiel von vorhin. Der aes() Befehl erlaubt eine flexible Gestaltung von Variablen
+
+```{r}
+Schuhgröße <- ggplot(data=WPStudis,aes(WPStudis$F5_Schuhgröße))
+```
+
+Jetzt haben wir ggplot2 gesagt um welche Daten es geht. Um nun etwas anzuzeigen, müssen wir ein "Layer" erzeigen. Z.B. ein Bar Chart:
+
+```{r}
+Schuhgröße + geom_bar()
+```
+
+Nun wollen wir die Schuhgrößen nach Geschlecht aufgeteilt darstellen:
+
+```{r}
+Schuhgröße2 <- ggplot(data=WPStudis,aes(WPStudis$F5_Schuhgröße, fill=WPStudis$F3_Geschlecht))
+Schuhgröße2 + geom_bar()
+```
+
+oder:
+```{r}
+Schuhgröße3 <- ggplot(data=WPStudis,aes( WPStudis$F3_Geschlecht,WPStudis$F5_Schuhgröße))
+Schuhgröße3 + geom_boxplot()
+```
+
+
+Nehmen wir nun an wir wollen nicht die einzelnen Werte darstellen sondern die Mittelwerte vergleichen. Auch das kann ggplot2. Zunächst müssen wir als X-Achsenwerte Geschlecht und als Y-Achsenwerte die Schuhgröße definiere.
+
+```{r}
+Schuhgröße_Mittel <- ggplot(data=WPStudis,aes(WPStudis$F3_Geschlecht, WPStudis$F5_Schuhgröße))
+```
+
+Als nächsten benötigen wir hierfür die "stat-summary" funktion um die Mittelwerte auszurechnen.
+```{r}
+Schuhgröße_Mittel + stat_summary(fun.y = mean, geom ="point") 
+```
+
+Nun machen wir es noch etwas schöner
+```{r}
+Schuhgröße_Mittel + stat_summary(fun.y = mean, geom ="point", size=5 ) + labs(x="", y="Schuhgröße")
+```
+
+
+Wir wollen nun den jeweiligen Standardfehler anzeigen
+Hierfür müssen wir das HMISC Package laden
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(Hmisc)
+```
+```{r}
+Schuhgröße_Mittel + stat_summary(fun.y = mean, geom ="point", size=5 ) + labs(x="", y="Schuhgröße")+  guides(colour=FALSE) +
+  stat_summary(fun.data=mean_cl_normal, geom="errorbar", position=position_dodge(width=0.90), width=0.2)
+```
+
+
+Machen wir gemeinsam ein Beispiel aus Dem Datensatz "erstis":
+
+```{r}
+load('erstis.RData')
+```
+
+Wir erstellen  ein Histogramm zum Alter der Personen.
+
+Hiermit sagen wir R welche Daten wir darstellen wollen.
+
+```{r}
+histo <- ggplot(erstis, aes(alter))
+```
+
+Hiermit legen wir den ersten "Layer" an mit einem Histogramm
+
+```{r}
+histo + 
+  geom_histogram()
+```
+
+Oder etwas schöner
+
+```{r}
+histo + 
+  geom_histogram(colour="black",fill="white", binwidth=2)
+```
+
+Wie würden Sie die Verteilung des Alters in relation zur Normalverteilung beschreiben?
+
+Zur Erinnerung: Normalverteilte Daten sind Vorraussetzung für viele Test. Hierfür ist es hilfreich sich die Normalverteilung darüber zu legen.
+```{r}
+histo + 
+  geom_histogram(aes(y=..density..), colour="black",fill="white", binwidth=2, na.rm=TRUE) + 
+  stat_function(fun = dnorm,  args = list(mean = mean(erstis$alter, na.rm = TRUE), sd = sd(erstis$alter, na.rm=TRUE)), colour="black", size=1)
+```
+
+Ein weiteres Beispiel für eine ggplot2 Grafik 
+
+Hierzu brauchen wir noch das Paket Leaflet
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(leaflet)
+```
+Wir laden die Beispiel Erdbeben-Daten (Fiji Earthquakes) und reduzieren Sie auf die ersten 100 Einträge
+```{r}
+data(quakes)
+quakes =  head(quakes, 100)
+```
+
+Wir legen eine eigene Farbpalette fest:
+```{r}
+mybins=seq(4, 6.5, by=0.5)
+mypalette = colorBin( palette="YlOrBr", domain=quakes$mag, na.color="transparent", bins=mybins)
+```
+
+Wir erzeugen den Text für die Punkte:
+```{r}
+mytext=paste("Depth: ", quakes$depth, "<br/>", "Stations: ", quakes$stations, "<br/>", "Magnitude: ", quakes$mag, sep="") %>%
+  lapply(htmltools::HTML)
+```
+
+Und nun erzeugen wir die Karte:
+```{r eval=FALSE, include=FALSE}
+leaflet(quakes) %>% 
+  addTiles()  %>% 
+  setView( lat=-27, lng=170 , zoom=4) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addCircleMarkers(~long, ~lat, 
+                   fillColor = ~mypalette(mag), fillOpacity = 0.7, color="white", radius=8, stroke=FALSE,
+                   label = mytext,
+                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
+  ) %>%
+  addLegend( pal=mypalette, values=~mag, opacity=0.9, title = "Magnitude", position = "bottomright" )
+```
+
+

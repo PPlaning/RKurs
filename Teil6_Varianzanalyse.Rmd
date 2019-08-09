@@ -1,0 +1,617 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 6 Varianzanalytische Verfahren
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+
+
+##Vorbereitung
+
+
+Pakete Laden:
+```{r, message=FALSE, warning=FALSE}
+library(foreign)
+library(car)
+library(psych)
+```
+
+
+Wissenschaftliche Notation ausschalten (Ausser Sie mögen e+10 Notationen :-) )
+```{r}
+options(scipen = 999)
+```
+
+##Einfaktorielle ANOVA (ONE-Way Independent ANOVA) 
+
+Andy Field schlägt (wie auch beim t-test) folgendes Vorgehen vor (Field, S.433):
+
+ 1. Eingabe / Import der Daten
+ 2. Daten untersuchen mit Dekriptiven Statistiken (Mittelwerte,Grafiken erzeugen) 
+    und Vorraussetzungen prüfen (insb. Skalen & Varianzhomogenität, ggf. Normalität der AV in den Gruppen, wobei die ANOVA rel. Robust gegen Verletzungen der Normalität ist)
+ 3. ANOVA durchführen
+ 4. Kontraste oder Post-Hoc Tests durchführen bzw. berechnen
+
+
+Schritt 1  
+
+Nehmen wir als Beispiel wieder an Sie wollen wieder die Wunderpille testen, haben aber das Hypothese, dass Zwei Pillen ein noch wirksammeres Mittel sind um die Trinkfestigkeit zu steigern. Sie schicken diesesmal drei Gruppen von je 10 Personen auf den Wasen (Unabhängiges Versuchsdesign mit 3 Gruppen: Kontrolle, Pille, 2Pillen)
+
+Daten einlesen:
+```{r}
+ohnePille<-c(950,1540,2450,2650,1320,910,3120,3520,1450,450)
+mitPille <-c(1920,2950,3940,3950,2820,2520,5940,6020,4220,2620)
+mit2Pillen<-c(1100,2360,5250,5300,2720,2720,6740,8060,3870,3090)
+Trinkfestigkeit <- data.frame(ohnePille,mitPille,mit2Pillen)
+```
+
+Schauen Sie sich die Daten einmal an:
+```{r}
+Trinkfestigkeit 
+```
+
+Schritt 2:
+
+Gibt es einen signifikanten Unterschied zwischen den 3 Gruppen - schauen wir uns dies zunächst deskriptiv an:
+```{r}
+boxplot(ohnePille,mitPille,mit2Pillen, data=Trinkfestigkeit,
+        names=c("ohne Pille","Mit Pille", "Mit 2 Pillen"))
+```
+
+Auf Varianzhomogenitaet pruefen:
+
+Zunächst wandeln wir die Daten in das Long Format um:
+```{r}
+Trink.long <- stack(Trinkfestigkeit)
+```
+
+Nehmen wir uns die Zeit und bennen die Variablen
+```{r}
+colnames(Trink.long) <- c("Menge","Gruppe")
+```
+
+Schauen Sie sich die Daten im Long-Format an:
+```{r}
+Trink.long
+```
+
+Vorraussetzungen sollten wir an dieser Stelle testen. Da diese Tests jedoch die Befehle der ANOVA nutzen, führen wir zunächst die ANOVA aus und testen die Vorraussetzungen im nächsten Schritt:
+
+Die Funktion für dei ANOVA lautet *aov()* die Argumente sind vergleichbar dem Regressions-Fall *AV~UV*
+
+```{r}
+ANOVA1 <- aov(Menge ~ Gruppe, data=Trink.long)
+```
+
+Nun schauen wir uns die Ergebnisse der ANOVA an
+```{r}
+summary(ANOVA1)
+```
+
+Nun überprüfen wir die Vorraussetzungen für die ANOVA:
+
+Nun führen wir den Test auf Varianzhomogenitaet durch:
+```{r}
+leveneTest(Menge ~ Gruppe, data=Trink.long, center=mean) 
+```
+
+
+Bei Varianzheterogenitaet (Welch Korrektur):
+```{r}
+oneway.test(Menge ~ Gruppe, data=Trink.long)
+```
+
+Jetzt wissen wir, dass es einen Einfluss auf die Trinkfestigkeit gibt. Aber noch nicht welchen. Hierfür benötigen wir sog. Post-Hoc Verfahren.
+
+Post-Hoc-Tests:
+
+Wir machen nun paarweise t-Tests um zu ermittlen welche Gruppen sich signifikant unterschieden. ACHTUNG: Aufgrund der Alpha-Fehler-Inflation, muss eine Korrektur vorgenommen werden z.B. Bonferroni. Die Bonferroni Korrektur multipliziert die p-Werte mit der Anzahl der Kontraste
+```{r}
+pairwise.t.test(Trink.long$Menge, Trink.long$Gruppe, p.adj="bonferroni")
+```
+
+Oder bei ungleichen Varianzen :
+```{r}
+pairwise.t.test(Trink.long$Menge, Trink.long$Gruppe, p.adj="bonferroni",pool.sd=FALSE)
+```
+
+Alternativ Tukey's HSD Test:
+```{r}
+TukeyHSD(ANOVA1) 
+```
+
+Alternative: Geplante Kontraste. Hiermit können gezielte Gruppenvergleiche hergestellt werden, fall es bereits spezielle Hypothesen gibt. Diese werden an dieser Stelle jedoch nicht weiter vertieft.
+
+Plot aus dem Paket "phia" - Wird später bei mehrfaktoriellen Designs spannend (Interaktionsdiagramm)
+```{r}
+library(phia)
+plot(interactionMeans(ANOVA1))
+```
+
+Grafik zurücksetzen:
+```{r}
+par(mfrow=c(1,1)) 
+```
+
+
+##Zweifaktorielle ANOVA (TWO-Way Independent ANOVA) 
+
+
+Zweifaktorielle ANOVA funktionier auch mitdem aov() Befehl. Die zweite UV wird nach der Logik "AV~UV1*UV2" aufgenommen.
+
+Beispiel:
+
+Die Variable biofeedback mit den Faktorstufen present/absent besagt ob die Probanten eine smart watch tragen, die den Blutdruck anzeigt. Die Variable drug mit den Faktorstufen present/absent besagt ob die Probanten ein blutdrucksenkendes Mittel bekommen haben. 20 Teilnehmer werden zufällig in eine der 4 Gruppen eingeteilt. AV ist der Blutdruck.
+
+Daten einlesen:
+
+```{r}
+bloodpressure <- c(158,163,173,178,168,188,183,198,178,193,186,191,196,181,176,185,190,195,200,180)
+biofeedback <- factor(c(rep("present",10),rep("absent",10)))
+drug <- factor(rep(c(rep("present",5),rep("absent",5)),2))
+bpdata <- data.frame(bloodpressure, biofeedback, drug)
+bpdata
+```
+
+
+Wir testen zunächst die Vorraussetzungen für eine ANOVA:
+
+Test auf Varianzhomogenität:
+```{r, message=FALSE, warning=FALSE}
+library(car)
+leveneTest(bloodpressure ~ biofeedback*drug, data=bpdata, center=mean) 
+```
+
+Jetzt rechnen wir die ANOVA:
+```{r}
+ANOVA2 <- aov(bloodpressure ~ biofeedback*drug, data=bpdata)
+summary(ANOVA2)
+```
+
+
+Hinweis zu TypI,II und III Quadratsummen:
+
+Standardmäßig Berechnet R Typ I Quadratsummen (Sum Sq). Grundsätzlich gibt es bei gleichgroßen Gruppengrößen (wie in diesem Fall) keinen Unterschied zwischen der Verwendung von Typ I, II und III Quadratsummen. 
+
+Bei ungleichen Gruppengrößen hängt die Entscheidung welchen Quadratsummen-Typ Sie verwenden davon ab welche Hypothese Sie in Ihrem Forschungsdesign interessiert. Kurz gesagt: Ist vorwiegend der Interaktionseffekt von Interesse sollten Sie Typ III Quadratsummen verwenden. Interessieren Sie eher die Haupteffekte, können Typ I Quadratsummen sinnvoller sein. Die Voraussetzung für die Berechnung von Typ III Quadratsummen ist jedoch, dass Sie orthogonale Kontraste definiert haben (Siehe Luhman S.197). Wenn Sie diese definieren (entweder manuell oder mit der Funktion <-contr.sum(2)) dann erhalten Sie für alle Quadrat-Summentypen die gleichen Ergebnisse bei gleich großen Gruppen.
+
+Eine sehr gute Übersicht zu diesem Thema bietet die Uni Göttingen:
+http://md.psych.bio.uni-goettingen.de/mv/unit/lm_cat/lm_cat_unbal_ss_explained.html
+
+
+Mittelwerte:
+```{r}
+model.tables(ANOVA2, "means")
+```
+
+Post-Hoc Analyse:
+Für Bonferroni müsste man die Daten in das Long Format bekommen
+Tukey ist hier die einfachere Wahl:
+```{r}
+TukeyHSD(ANOVA2) 
+```
+
+
+Interaktionsplot dem Paket "phia"
+```{r}
+plot(interactionMeans(ANOVA2))
+```
+
+Grafik zurücksetzen:
+```{r}
+par(mfrow=c(1,1)) 
+```
+
+
+Bei Zwei-Faktoriellen ANOVA kann man auch den "normalen" Interaktionsplot nutzen
+
+```{r}
+interaction.plot(biofeedback, drug, bloodpressure)
+```
+
+
+
+##Übungsaufgabe 6.1
+
+Diät-Vergleich. Wir haben ein Datenset von 78 Personen die jeweils eine von 3 Diäten durchlaufen haben. Wir haben das Gewicht vor der Diät, das Gewicht nach der Diät und einige Hintegrundinformationen: Geschlecht (0=Weiblich, 1=Männlich) , Alter und Größe. Ziel dieser Analyse ist es herauszufinden ob bestimmte Diäten für Männer bzw. Frauen besonders geeignet sind. Tipp: Sie müssen eine neue Variable erzeugen für den Gewichtsverlust.
+
+Daten einlesen:
+```{r}
+diet<-read.csv("Diet.csv")
+```
+
+
+
+
+##Messwiederholungs-ANOVA 
+
+In einer Studie haben Nolen-Hoeksema and Morrow (1991) die Depressions-Neigung von Studierenden, zwei Wochen vor einem schweren Erdbeben in Kalifornien in 1987 und an 4 weiteren Zeitpunkten jeweils 2 Wochen später.
+
+Wir laden die Daten
+```{r}
+Depression <- read.csv("NolenHoeksema.csv")
+Depression$time <- as.factor(Depression$time)
+Depression$Subject <- as.factor(Depression$Subject)
+Depression
+```
+
+Gibt es einen signifikanten Unterschied zwischen den 5 Zeitpunkten - schauen wir uns zunächst deskriptiv an:
+```{r}
+boxplot(Depression$outcome~Depression$time)
+```
+
+Auf Sphärizität pruefen:
+
+Wir nutzen das die ezANOVA Funktion aus dem Paket ez (Lawrence, 2013). Hierbei wird automatisch Mauchly's Test for Sphericity durchgeführt'
+```{r, message=FALSE, warning=FALSE}
+library(ez)
+```
+
+Das Paket bietet uns auch eine reihe deskriptiver Statistiken:
+
+```{r}
+ezStats(Depression, dv=outcome, wid=Subject,  within=time)
+```
+*dv* definiert die abhängige Variable
+*wid* definiert die Subjekte/Laufnummern
+*within* definiert die unabhängige (Faktor) Variable
+
+Geht natürlich auch mit der bekannten Funktion aus dem Psych Paket
+```{r, message=FALSE, warning=FALSE}
+library(psych)
+describeBy(Depression$outcome,Depression$time)
+```
+
+Nun führen wir die ANOVA mit Messwiederholung durch (die gleiche Argumente wie eben)
+```{r}
+anova.mw <- ezANOVA(Depression, dv=outcome, wid=Subject, within=time)
+anova.mw
+```
+
+Da die Spehärizitätsannahme nicht erfüllt ist wird automatisch Korrekturen durchgeführt.Grreenhouse-Geisser Epsilon (GGe) und Huynh-Feldt-Epsilon (HFe)
+
+Wie interpretieren wir nun die korrigierten p-Werte?
+
+
+Post-Hoc Verfahren (falls noch notwendig)
+Funktioniert bei Messwiederholung genauso, mit zusätzlichem Argument "paired=TRUE"
+```{r}
+pairwise.t.test(Depression$outcome,Depression$time, p.adj="bonferroni", paired=TRUE)
+```
+
+
+##Übungsaufgabe 6.2
+
+Nehmen wir an der Trinkfestigkeits-Versuch von eben wurde als Messwiederholungs-Design durchgeführt.Hierfür fügen wir den Daten einfach eine ID Spalte hinzu die angibt, dass jede Versuchsperson alle 3 Varianten durchlaufen ist:
+```{r}
+Trink.long$ID <- c(rep(seq(1,10), times =3))
+Trink.long$ID <- as.factor(Trink.long$ID)
+```
+
+Schauen wir uns die Daten an:
+```{r}
+Trink.long
+```
+
+Führen Sie eine einfaktorielle Varianzanalyse mit Messwiederholung durch und interpretieren Sie das Ergebnis.
+
+
+
+##ANCOVA Kovarianzanalyse 
+
+
+Frage: Brauchen Autos mit Automatikgetriebe mehr Benzin?
+
+Wir nutzen Datensatz mtcars (in R Hinterlegt). schauen wir uns die Daten mal an
+```{r}
+mtcars
+```
+
+Verwenden Sie die Hilfefunktion zu diesem Datensatz. Was bedeutet am=0 bzw. am=1 ?
+
+Deskriptive Analyse
+```{r}
+boxplot(mtcars$mpg~mtcars$am)
+```
+
+Das Getriebe scheint einen Einfluss auf den Verbrauch zu haben, ob dieser auch statistisch signifikant ist,könnte man zum Beispiel mit einem T-Test testen. 
+```{r}
+t.test(mpg~am,data = mtcars)
+```
+
+Es könnte aber auch sein, dass der Einfluss eigentlich durch die Motor-Leistung (hp) verursacht wird und bei gleichbleibender die Leistung (hp), das Getriebe gar keinen Einfluss auf den Verbauch (mpg) hat.
+
+Um diese Möglichkeit zu Testen, fürhen wir eine ANCOVA durch und kontrollieren für die Leistung (hp)
+
+
+Der Befehl lautet lm(AV~UV*Kovariate)
+```{r}
+ANCOVA_CARS <- lm(mpg~am*hp,data = mtcars)
+summary(ANCOVA_CARS)
+```
+
+Wie würden Sie das Ergebnis interpretieren? Was bedeutet der Wert Adjusted R-squared?
+
+Um besser zu verstehen, wie die Anzahl der Zylinder, die Leistung und der Verbauch zusammenhängen, erstellen ein Interaktionsdiagram
+
+Hierfür nutzen wir das Paket Rockchalk
+```{r, message=FALSE, warning=FALSE}
+library(rockchalk)
+slopes <-plotSlopes(ANCOVA_CARS,plotx="hp", modx="am")
+```
+
+Was sagt uns dieser Plot? 
+
+Es gibt keinen Interaktionseffekt (Linien fast parallel). Das heißt, Zunehmende Leistung nimmt mpg ab  unabhängig davon ob Automatik- oder Manuelles-Getriebe.
+
+Haben wir eigentlich die Vorraussetzungen geprüft? Diese sind bei ANCOVA insbesondere Varianzhomogenität und Unabhängigkeit des Prädiktors von der Kovariate
+
+Varianzhomogenität:
+```{r, message=FALSE, warning=FALSE}
+library(car)
+leveneTest(mtcars$mpg, as.factor(mtcars$am), center=mean)
+```
+
+Wir müssen unsere Ergebnisse also mit Vorsicht betrachten oder Rubuste Methoden nutzen (S. Fields (2015) Kapitel 11.6). Grundsätzlich sind varianzanalytische Verfahren jedoch relativ robust gegenüber der Verletzung der Varianzhomogenität.
+
+Wichtiger ist jedoch: Unabhängigkeit des Prädiktors von der Kovariate
+
+Wir müssen Frage beantworten ob es auf den verschiedenen Stufen der UV (Getriebe-Art) statistisch signifikante  Unterschiede in der Kovariate (Leistung) gibt 
+
+Grafisch:
+```{r}
+boxplot(hp~am, data=mtcars)
+```
+
+ANOVA mit dem Prädiktor und der Kovariate. 
+```{r}
+ANOVA_Test<-aov(am~hp, data=mtcars)
+summary(ANOVA_Test)
+```
+
+## MANOVA
+
+Die MANOVA (MultivariateAnalysis of Variance ) hat eine oder mehrere kategorielle Avs mit mindestens zwei Faktorstufen und zwei oder mehr abhängige Variablen. Das heißt die MANOVA untersucht eine oder mehr Einflußvariablen (UVs) die auf zwei oder mehr beeinflusste Variablen wirken (AVs). Grundsätzlich basiert die MANOVA auf den Cluster-Verfahren, welche versuchen Gruppen (von AVs) zu definieren, die sich in wesentlichen Charakter-Merkmalen (der UVs) unterscheiden. Das Verfahren ist daher sehr eng verwandt mit der Diskriminanzanalyse, sowie anderen Cluster-Verfahren. 
+
+
+Beispiel:
+
+Wir betrachten einen Triathlon. Hierbei müssen die Athleten nacheinander schwimmen, Fahrrad fahren und laufen. Nehmen wir in diesem einfachen Beispiel an wir wollen herausfinden ob es geschlechterspezifische, sowie altersbedingte Unterschiede in der Leistungsfähigkeit über die drei Disziplinen gibt. Das Geschlecht liegt dichotom vor (F/M), das Alter in drei Kategorien (CAT1-3), wobei Kategorie 3 die jüngsten sind und Kategorie 1 die ältesten.
+
+Daten einlesen:
+```{r}
+triathlon <-read.csv("triathlon.csv")
+```
+
+Hinweis: Anders als bei der ANOVA müssen bei der MANOVA die Daten als einzelne Vektoren, bzw. Matritzen definiert werden. Dies machen wir ganzn einfach hier:
+```{r}
+gender <- as.factor(triathlon[,1])
+cat <- as.factor(triathlon[,2])
+times <-as.matrix(triathlon[,3:5])
+```
+
+Vorraussetzungen prüfen:
+
+Die Vorraussetzungen entsprechen der ANOVA (Varianzhomogenität und Grundsätzlich Normalverteilung der AV in allen Gruppen). Das Problem: Wir müssen nun die Vorraussetzungen für jede AV auf jeder Faktorstufe der UVs testen. Daher ist die MANOVA Grundsätzlich mit sehr viel (Prüf-) Aufwand verbunden.
+
+Wir testen wir die Varianzhomogenität mit dem Levene test:
+
+```{r}
+leveneTest(SWIM~cat, data=triathlon)
+leveneTest(SWIM~gender, data=triathlon)
+leveneTest(BIKE~cat, data=triathlon)
+leveneTest(BIKE~gender, data=triathlon)
+leveneTest(RUN~cat, data=triathlon)
+leveneTest(RUN~gender, data=triathlon)
+```
+
+Wir sehen nun, dass Varianzhomogenität in allen bis auf 2 Gruppen gegeben ist. Es wäre daher ggf. ratsam eine nicht-parametrische Alternative zur MANOVA zu nutzen. Wir machen an dieser Stelle mit der klassichen MANOVA weiter.
+
+Nun spezifizieren wir die MANOVA. Hierbei ist darauf zu achten, dass wir ein Stern zwischen gender und cat setzen (anstelle des +) damit wir auch den Interaktionseffekt mit ausgegeben bekommen.
+
+```{r}
+output <-manova(times~gender*cat)
+summary.aov(output)
+```
+
+Interpretation:
+Wie sehen, dass bei den Zeiten für Schwimmen und Radfahren zumindest zwischen einer Alterskategorie (cat) einen signifikanten Unterschied gibt. Das Geschlecht hat wiederum nur einen signifikanten Einfluss auf die Zeiten beim Radfahren (Falls man auf 5% testet). Es gibt jedoch darüber hinaus einen signifikanten Interaktionseffekt zwischen Alter und Geschlecht bei den Kategorien Schwimmen und Radfahren.
+
+Leider gibt es für die MANOVA keine einfache Möglichkeit Interaktionsplots oder Post-Hoc Analysen durchzuführen um die gefundenen Effekte näher zu spezifizieren. Daher ist der einzige (wenn auch mühsame Weg) nun ANOVAs für die relevanten Effekte durchzuführen. Zum Beispiel eine zweifaktorielle ANOVA für die Schwimm-Zeiten, die wir als abschließendes Beispiel durchführen:
+
+ANOVA spezifizieren:
+
+```{r}
+ANOVA_Schwimmen <- aov(SWIM ~ GENDER*CATEGORY, data=triathlon)
+summary(ANOVA_Schwimmen)
+```
+
+Post-Hoc Analyse:
+Tukey :
+```{r}
+TukeyHSD(ANOVA_Schwimmen) 
+```
+
+
+Interaktionsplot dem Paket "phia"
+```{r}
+library(phia)
+plot(interactionMeans(ANOVA_Schwimmen))
+```
+
+Nun können wir auch den Interkationseffekt gut beurteilen (Frauen sind im Alter fitter als Männer ;-))
+
+
+##Hausaufgabe Luhmann Kap. 14 & 15 
+
+KAPITEL 14  
+
+Vorbereitungen:
+
+Benötigte Pakete laden
+```{r, message=FALSE, warning=FALSE}
+library(psych)
+library(car)
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("erstis.RData")
+```
+
+Data Frame aktivieren
+```{r}
+attach(erstis)
+```
+
+Nr. 1
+
+Deskriptive Statistiken und Stichprobengröße
+```{r}
+describeBy(prok, gruppe)
+```
+
+Levene-Test
+```{r}
+leveneTest(prok ~ gruppe)
+```
+
+ANOVA
+```{r}
+aufgabe1 <- aov(prok ~ gruppe)
+summary(aufgabe1)
+```
+
+Effektgröße eta2 -> Entpricht R2 bei der Regression!
+```{r}
+summary.lm(aufgabe1)$r.squared
+```
+
+Nr. 2
+
+Personen mit fehlenden Werten entfernen
+```{r}
+auswahl <- na.omit(data.frame(zuf.bed.1, uni1, uni3))
+```
+
+
+Sicherstellen, dass neuer Data Frame verwendet wird
+```{r}
+detach(erstis)
+attach(auswahl)
+```
+
+Deskriptive Statistiken und Stichprobengröße:
+```{r}
+describeBy(zuf.bed.1, list(uni1, uni3), mat = TRUE)
+```
+
+Kontrastkodierung ändern
+```{r}
+contrasts(uni1) <- contr.sum(2)
+contrasts(uni3) <- contr.sum(2)
+```
+
+ANOVA
+```{r}
+aufgabe2 <- aov(zuf.bed.1 ~ uni1 * uni3)
+Anova(aufgabe2, type = 3)
+```
+
+Diagramm
+```{r}
+interaction.plot(uni3, uni1, zuf.bed.1)
+```
+
+KAPITEL 15  
+
+Vorbereitungen
+
+Benötigte Pakete laden
+```{r, message=FALSE, warning=FALSE}
+library(ez)
+```
+
+Arbeitsverzeichnis anpassen und Datei laden
+```{r}
+load("prüfung.RData")
+```
+
+Data Frame aktivieren
+```{r, message=FALSE, warning=FALSE}
+attach(prüfung)
+```
+
+Nr. 1
+```{r, message=FALSE, warning=FALSE}
+prüfung.reduz <- na.omit(prüfung)
+prüfung.long <- reshape(prüfung.reduz, idvar="nr", 
+                        varying=c("gs.1", "gs.2", "gs.3", "ru.1", "ru.2", "ru.3"), 
+                        timevar="zeitpunkt", direction = "long")
+```
+
+Nr. 2
+
+Id-Variable und UV in Faktoren konvertieren
+```{r, message=FALSE, warning=FALSE}
+prüfung.long$nr <- factor(prüfung.long$nr)
+prüfung.long$zeitpunkt <- factor(prüfung.long$zeitpunkt)
+```
+
+Deskriptive Statistiken
+```{r, message=FALSE, warning=FALSE}
+ezStats(prüfung.long, dv = .(ru), wid = .(nr), within = .(zeitpunkt))
+```
+
+Messwiederholte Varianzanalyse
+```{r, message=FALSE, warning=FALSE}
+aufgabe2 <- ezANOVA(prüfung.long, dv = .(ru), wid = .(nr), within = .(zeitpunkt))
+aufgabe2
+```
+
+Diagramm
+```{r, message=FALSE, warning=FALSE}
+ezPlot(prüfung.long, dv = .(ru), wid = .(nr), within = .(zeitpunkt), 
+       x = .(zeitpunkt), x_lab = "Zeitpunkt", 
+       y_lab = "Ruhige vs. unruhige Stimmung")
+```
+
+Nr. 3
+
+Deskriptive Statistiken
+```{r, message=FALSE, warning=FALSE}
+ezStats(prüfung.long, dv = .(ru), wid = .(nr), 
+        within = .(zeitpunkt), between = .(sex))
+```
+
+Gemischte Varianzanalyse mit Typ-III-Quadratsummen
+```{r, message=FALSE, warning=FALSE}
+aufgabe3 <- ezANOVA(prüfung.long, dv = .(ru), wid = .(nr), 
+                    within = .(zeitpunkt), between = .(sex), type = 3)
+aufgabe3
+```
+
+Diagramm
+```{r, message=FALSE, warning=FALSE}
+ezPlot(prüfung.long, dv = .(ru), wid = .(nr), 
+       within = .(zeitpunkt), between = .(sex),
+       x = .(zeitpunkt), , split = .(sex), 
+       x_lab = "Zeitpunkt", y_lab = "Ruhige vs. unruhige Stimmung", 
+       split_lab = "Geschlecht")
+```

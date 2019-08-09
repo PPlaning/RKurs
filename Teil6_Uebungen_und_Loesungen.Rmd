@@ -1,0 +1,147 @@
+---
+title: "Quantitative Datenerhebung & -analyseverfahren mit R."
+author: Prof. Dr. Patrick Planing | HFT Stuttgart University 
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyfoot[CO,CE]{Urheberrechtlich geschütztes Manuskript. (c) Patrick Planing }
+- \fancyfoot[LE,RO]{\thepage}
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    theme: journal
+    toc: yes
+geometry: margin=1in
+fontsize: 11pt
+subtitle: Teil 1 Datenmanagement
+always_allow_html: yes
+fontfamily: mathpazo
+editor_options: 
+  chunk_output_type: console
+---
+# Übungsaufgaben und Lösungen
+
+
+#Teil 6: Varianzanalystische Verfahren
+
+
+##Übungsaufgabe 6.1
+
+Diät-Vergleich. Wir haben ein Datenset von 78 Personen die jewiels eine von 3 Diäten durchlaufen haben. Wir haben das Gewicht vor der Diät, das Gewicht nach der Diät und einige Hintegrundinformationen: Geschlecht, Alter und Größe. Ziel dieser Analyse ist es herauszufinden ob bestimmte Diäten für Männer bzw. Frauen besonders geeignet sind.
+
+Daten einlesen:
+```{r}
+diet<-read.csv("diet.csv")
+```
+
+
+##Lösung Übungsaufgabe 6.1
+
+Da es nur 3 Diäten gibt sollten wir das Format in "Faktor" anpassen, genaus die Variable "Gender".
+```{r}
+diet$Diet <-as.factor(diet$Diet)
+diet$gender<-as.factor(diet$gender)
+```
+
+Da 2 Personen kein Geschlecht angegeben haben müssen wir diese ausschließen:
+
+```{r}
+diet<-na.omit(diet)
+```
+
+
+Dann müssen wir noch eine neue Variable erzeugen für den Gewichtsverlust:
+
+```{r}
+diet$weightlost<-diet$pre.weight-diet$weight6weeks
+```
+
+Wir testen zunächst die Vorraussetzungen für eine ANOVA:
+
+Test auf Varianzhomogenität:
+```{r, message=FALSE, warning=FALSE}
+library(car)
+leveneTest(weightlost ~ gender*Diet, data=diet, center=mean) 
+```
+
+
+ANOVA
+```{r}
+ANOVA3 <- aov(weightlost ~ gender*Diet, data=diet)
+summary(ANOVA3)
+```
+
+Interpretation:
+Wie sehen, dass sich die Diäten signifikant in Ihrer Wirksamkeit auf den Gewichtsverlust unterscheiden. Da es jedoch auch einen signifikanten Interaktionseffekt gibt [F(2, 70)=3.153, p = 0.049] ist dieser Unterschied wohl nicht für Männer und Frauen gleichermaßen ausgeprägt. Es lohnt sich als weiter zu Analysieren.
+
+Post-Hoc:
+
+```{r}
+TukeyHSD(ANOVA3)
+```
+
+Interpretation: 
+Wie sehen, dass es nur für Frauen signifikante Unterschiede zwischen den Diäten gibt. Diese sind einmal zwischen Diät  1 und 3 (p=0.0191) und Diät 2 und 3 (p=0.004).
+
+Nun können wir uns dies auch noch grafisch ansehen:
+
+Interaktionsplot dem Paket "phia"
+```{r}
+library(phia)
+plot(interactionMeans(ANOVA3))
+```
+
+
+
+##Übungsaufgabe 6.2
+
+Nehmen wir an der Trinkfestigkeits-Versuch von eben wurde als Messwiederholungs-Design durchgeführt.Hierfür fügen wir den Daten einfach eine ID Spalte hinzu die angibt, dass jede Versuchsperson alle 3 Varianten durchlaufen ist:
+
+Daten einlesen (Falls noch nicht geschehen)
+```{r}
+ohnePille<-c(950,1540,2450,2650,1320,910,3120,3520,1450,450)
+mitPille <-c(1920,2950,3940,3950,2820,2520,5940,6020,4220,2620)
+mit2Pillen<-c(1100,2360,5250,5300,2720,2720,6740,8060,3870,3090)
+Trinkfestigkeit <- data.frame(ohnePille,mitPille,mit2Pillen)
+Trink.long <- stack(Trinkfestigkeit)
+colnames(Trink.long) <- c("Menge","Gruppe")
+```
+
+```{r}
+Trink.long$ID <- c(rep(seq(1,10), times =3))
+Trink.long$ID <- as.factor(Trink.long$ID)
+```
+
+Schauen wir uns die Daten an:
+```{r}
+Trink.long
+```
+
+Führen Sie eine einfaktorielle Varianzanalyse mit Messwiederholung durch und interpretieren Sie das Ergebnis.
+
+
+##Lösung Übung 6.2
+
+Deskriptive Statistiken (Daran hat sich nichts geändert):
+```{r}
+boxplot(Trink.long$Menge~Trink.long$Gruppe)
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(psych)
+describeBy(Trink.long$Menge,Trink.long$Gruppe)
+```
+
+ANOVA
+```{r}
+library(ez)
+anova.mw <- ezANOVA(Trink.long, dv=Menge, wid=ID, within=Gruppe)
+anova.mw
+```
+
+Post-Hoc Verfahren 
+```{r}
+pairwise.t.test(Trink.long$Menge,Trink.long$Gruppe, p.adj="bonferroni", paired=TRUE)
+```
